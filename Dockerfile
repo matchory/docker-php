@@ -1,4 +1,4 @@
-FROM php:8-cli AS base
+FROM php:8-cli
 LABEL maintainer="moritz@matchory.com"
 
 # Arguments defined in docker-compose.yaml
@@ -55,35 +55,6 @@ COPY php.ini $PHP_INI_DIR/conf.d/99-docker.ini
 # Create the application user
 RUN useradd -G www-data -u $uid -d /home/$user $user
 
-EXPOSE 9000
-
-FROM base AS dev
-ENV BLACKFIRE_PORT 8707
-
-# Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints:
-ENV PHP_IDE_CONFIG serverName=Docker
-
-# Install blackfire
-# Please note that the Blackfire Probe is dependent on the session module.
-# If it isn't present in your install, you will need to enable it yourself.
-RUN set -eux; \
-    version=$(php -r "echo PHP_MAJOR_VERSION.PHP_MINOR_VERSION;"); \
-    curl -A "Docker" -o /tmp/blackfire-probe.tar.gz -D - -L -s https://blackfire.io/api/v1/releases/probe/php/linux/amd64/$version; \
-    mkdir -p /tmp/blackfire; \
-    tar zxpf /tmp/blackfire-probe.tar.gz -C /tmp/blackfire; \
-    mv /tmp/blackfire/blackfire-*.so $(php -r "echo ini_get ('extension_dir');")/blackfire.so; \
-    printf "extension=blackfire.so\nblackfire.agent_socket=tcp://blackfire:${BLACKFIRE_PORT}\n" > $PHP_INI_DIR/conf.d/blackfire.ini; \
-    rm -rf /tmp/blackfire /tmp/blackfire-probe.tar.gz
-
-# Install and enable XDebug on your local dev environment
-RUN set -eux; \
-    pecl install xdebug; \
-    docker-php-ext-enable xdebug
-
-# Run as our application user
-USER $user
-
-FROM base AS prod
 COPY ./healthcheck.sh /usr/local/bin/healthcheck
 
 RUN chmod o+x /usr/local/bin/healthcheck
@@ -95,5 +66,4 @@ RUN chmod o+x /usr/local/bin/healthcheck
 HEALTHCHECK --interval=10s --timeout=3s \
   CMD ["sh", "/usr/local/bin/healthcheck"]
 
-# Run as our application user
-USER $user
+EXPOSE 9000
