@@ -1,11 +1,27 @@
-FROM php:8-cli
+FROM php:8.1-cli-alpine
 LABEL maintainer="moritz@matchory.com"
 
-# Arguments defined in docker-compose.yaml
+# Persistent/Runtime dependencies
+RUN apk add --no-cache \
+		gnu-libiconv \
+    libstdc++ \
+		gettext \
+		fcgi \
+		file \
+		git \
+		acl \
+	;
+
+# install gnu-libiconv and set LD_PRELOAD env to make iconv work fully on Alpine image.
+# see https://github.com/docker-library/php/issues/240#issuecomment-763112749
+ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so
+
 ARG user="5000"
 ARG uid="5000"
 
-ENV REDIS_VERSION 5.3.4
+ARG APCU_VERSION=5.1.21
+ARG REDIS_VERSION=5.3.7
+ARG OPENSWOOLE_VERSION=4.11.1
 
 # Opcache settings
 ENV PHP_OPCACHE_ENABLE="1" \
@@ -14,56 +30,96 @@ ENV PHP_OPCACHE_ENABLE="1" \
     PHP_OPCACHE_MEMORY_CONSUMPTION="192" \
     PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 
-# Install system dependencies
+# Install dev-related PHP extensions
 RUN set -eux; \
-    apt-get update; \
-    apt-get install --no-install-recommends -y \
-      libonig-dev \
-      libxml2-dev \
-      libpng-dev \
-      unzip \
-      curl \
-      git \
-      zip; \
-    apt-get clean; \
-    rm -rf /var/lib/apt/lists/*
-
-# Install PHP redis extension
-RUN set -eux; \
-    curl -L -o /tmp/redis.tar.gz https://github.com/phpredis/phpredis/archive/$REDIS_VERSION.tar.gz; \
+    apk add --no-cache --virtual .build-deps \
+      $PHPIZE_DEPS \
+      postgresql-dev \
+      oniguruma-dev \
+      openssl-dev \
+      yaml-dev \
+      libzip-dev \
+      pcre2-dev \
+      zlib-dev \
+      curl-dev \
+      pcre-dev \
+      zlib-dev \
+      icu-dev \
+      ; \
+    \
+    curl -L -o /tmp/redis.tar.gz "https://github.com/phpredis/phpredis/archive/${REDIS_VERSION}.tar.gz"; \
     tar xfz /tmp/redis.tar.gz; \
     rm -r /tmp/redis.tar.gz; \
     mkdir -p /usr/src/php/ext; \
-    mv phpredis-* /usr/src/php/ext/redis
+    mv phpredis-* /usr/src/php/ext/redis; \
+    \
+    docker-php-ext-configure zip; \
+    docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        pdo_pgsql \
+        mbstring \
+        sockets \
+        opcache \
+        bcmath \
+        pcntl \
+        redis \
+        intl \
+        zip \
+    ; \
+    # Sockets have to be compiled separately due to a PHP bug \
+    # See: https://github.com/php/php-src/issues/7986
+    # See: https://github.com/docker-library/php/issues/1245
+    #CFLAGS="-D_GNU_SOURCE" docker-php-ext-install sockets; \
+    \
+    docker-php-source extract; \
+    mkdir -p /usr/src/php/ext/swoole; \
+    curl -sfL "https://github.com/openswoole/swoole-src/archive/refs/tags/v${OPENSWOOLE_VERSION}.tar.gz" -o swoole.tar.gz; \
+    tar xfz swoole.tar.gz --strip-components=1 -C /usr/src/php/ext/swoole; \
+    docker-php-ext-configure swoole \
+      --enable-openssl \
+      --enable-mysqlnd \
+      --enable-sockets \
+      --enable-http2 \
+      --enable-swoole-curl \
+      --enable-swoole-json \
+      --with-postgres \
+    ; \
+    docker-php-ext-install -j$(nproc) swoole; \
+    \
+    pecl install \
+      "apcu-${APCU_VERSION}" \
+      yaml \
+    ; \
+    pecl clear-cache; \
+    docker-php-ext-enable \
+      opcache \
+      apcu \
+      yaml \
+    ; \
+    \
+    rm -f swoole.tar.gz; \
+    docker-php-source delete; \
+    \
+    runDeps="$( \
+      scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
+        | tr ',' '\n' \
+        | sort -u \
+        | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+    )"; \
+    apk add --no-cache --virtual .phpexts-rundeps $runDeps; \
+    \
+    apk del .build-deps
 
-# Install PHP extensions
-RUN docker-php-ext-install \
-    bcmath \
-    mbstring \
-    opcache \
-    pcntl \
-    pdo_mysql \
-    redis \
-    sockets
+RUN ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
 
-# Install the default production php.ini
-RUN mv $PHP_INI_DIR/php.ini-production $PHP_INI_DIR/php.ini
-
-# Copy custonm PHP settings
-COPY php.ini $PHP_INI_DIR/conf.d/99-docker.ini
+# Copy custom PHP settings
+COPY php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
 
 # Create the application user
-RUN useradd -G www-data -u $uid -d /home/$user $user
+RUN adduser -D -G www-data -u "${uid}" -h "/home/${user}" "${user}"
 
-COPY ./healthcheck.sh /usr/local/bin/healthcheck
+ENTRYPOINT ["docker-php-entrypoint"]
 
-RUN chmod o+x /usr/local/bin/healthcheck
-
-# Configure the health check. This will query the RoadRunner status endpoint in
-# a HTTP context, and simply exit with 0 otherwise. The command referred to
-# below is copied from the "healthcheck.sh" script, so take a look at that, too.
-# See https://roadrunner.dev/docs/beep-beep-health for more info.
-HEALTHCHECK --interval=10s --timeout=3s \
-  CMD ["sh", "/usr/local/bin/healthcheck"]
+VOLUME /var/run/php
 
 EXPOSE 9000
