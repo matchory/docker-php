@@ -37,14 +37,14 @@ RUN set -eux; \
       postgresql-dev \
       oniguruma-dev \
       openssl-dev \
-      yaml-dev \
       libzip-dev \
       pcre2-dev \
-      zlib-dev \
-      curl-dev \
       pcre-dev \
+      yaml-dev \
+      curl-dev \
       zlib-dev \
       icu-dev \
+      c-ares-dev \
       ; \
     \
     curl -L -o /tmp/redis.tar.gz "https://github.com/phpredis/phpredis/archive/${REDIS_VERSION}.tar.gz"; \
@@ -66,25 +66,21 @@ RUN set -eux; \
         intl \
         zip \
     ; \
-    # Sockets have to be compiled separately due to a PHP bug \
-    # See: https://github.com/php/php-src/issues/7986
-    # See: https://github.com/docker-library/php/issues/1245
-    #CFLAGS="-D_GNU_SOURCE" docker-php-ext-install sockets; \
-    \
     docker-php-source extract; \
-    mkdir -p /usr/src/php/ext/swoole; \
-    curl -sfL "https://github.com/openswoole/swoole-src/archive/refs/tags/v${OPENSWOOLE_VERSION}.tar.gz" -o swoole.tar.gz; \
-    tar xfz swoole.tar.gz --strip-components=1 -C /usr/src/php/ext/swoole; \
-    docker-php-ext-configure swoole \
-      --enable-openssl \
-      --enable-mysqlnd \
-      --enable-sockets \
-      --enable-http2 \
+    mkdir -p /usr/src/php/ext/openswoole; \
+    curl -sfL "https://github.com/openswoole/swoole-src/archive/refs/tags/v${OPENSWOOLE_VERSION}.tar.gz" -o openswoole.tar.gz; \
+    tar xfz openswoole.tar.gz --strip-components=1 -C /usr/src/php/ext/openswoole; \
+    docker-php-ext-configure openswoole \
       --enable-swoole-curl \
       --enable-swoole-json \
+      --enable-openssl \
+      --enable-sockets \
+      --enable-mysqlnd \
       --with-postgres \
+      --enable-http2 \
+      --enable-cares \
     ; \
-    docker-php-ext-install -j$(nproc) swoole; \
+    docker-php-ext-install -j$(nproc) --ini-name zz-openswoole.ini openswoole; \
     \
     pecl install \
       "apcu-${APCU_VERSION}" \
@@ -96,8 +92,7 @@ RUN set -eux; \
       apcu \
       yaml \
     ; \
-    \
-    rm -f swoole.tar.gz; \
+    rm -f openswoole.tar.gz; \
     docker-php-source delete; \
     \
     runDeps="$( \
