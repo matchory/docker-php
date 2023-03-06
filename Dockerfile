@@ -1,4 +1,4 @@
-FROM php:8.1-cli-alpine
+FROM php:8.2-cli-alpine
 LABEL maintainer="moritz@matchory.com"
 
 # Persistent/Runtime dependencies
@@ -19,9 +19,9 @@ ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so
 ARG user="5000"
 ARG uid="5000"
 
-ARG APCU_VERSION=5.1.21
+ARG APCU_VERSION=5.1.22
 ARG REDIS_VERSION=5.3.7
-ARG OPENSWOOLE_VERSION=4.11.1
+ARG OPENSWOOLE_VERSION=22.0.0
 
 # Opcache settings
 ENV PHP_OPCACHE_ENABLE="1" \
@@ -36,6 +36,7 @@ RUN set -eux; \
       $PHPIZE_DEPS \
       postgresql-dev \
       oniguruma-dev \
+      linux-headers \
       openssl-dev \
       libzip-dev \
       pcre2-dev \
@@ -71,8 +72,7 @@ RUN set -eux; \
     curl -sfL "https://github.com/openswoole/swoole-src/archive/refs/tags/v${OPENSWOOLE_VERSION}.tar.gz" -o openswoole.tar.gz; \
     tar xfz openswoole.tar.gz --strip-components=1 -C /usr/src/php/ext/openswoole; \
     docker-php-ext-configure openswoole \
-      --enable-swoole-curl \
-      --enable-swoole-json \
+      --enable-hook-curl \
       --enable-openssl \
       --enable-sockets \
       --enable-mysqlnd \
