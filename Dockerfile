@@ -4,7 +4,7 @@ LABEL maintainer="moritz@matchory.com"
 # Persistent/Runtime dependencies
 RUN apk add --no-cache \
 		gnu-libiconv \
-    libstdc++ \
+        libstdc++ \
 		gettext \
 		fcgi \
 		file \
