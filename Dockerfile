@@ -84,11 +84,13 @@ RUN set -eux; \
     \
     pecl install \
       "apcu-${APCU_VERSION}" \
+      excimer \
       yaml \
     ; \
     pecl clear-cache; \
     docker-php-ext-enable \
       opcache \
+      excimer \
       apcu \
       yaml \
     ; \
