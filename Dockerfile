@@ -1,4 +1,4 @@
-FROM php:8.2-cli-alpine
+FROM php:8.2-cli-alpine AS base
 LABEL maintainer="moritz@matchory.com"
 
 # Persistent/Runtime dependencies
@@ -22,13 +22,6 @@ ARG uid="5000"
 ARG APCU_VERSION=5.1.22
 ARG REDIS_VERSION=5.3.7
 ARG OPENSWOOLE_VERSION=22.0.0
-
-# Opcache settings
-ENV PHP_OPCACHE_ENABLE="1" \
-    PHP_OPCACHE_VALIDATE_TIMESTAMPS="0" \
-    PHP_OPCACHE_MAX_ACCELERATED_FILES="10000" \
-    PHP_OPCACHE_MEMORY_CONSUMPTION="192" \
-    PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 
 # Install dev-related PHP extensions
 RUN set -eux; \
@@ -120,3 +113,35 @@ ENTRYPOINT ["docker-php-entrypoint"]
 VOLUME /var/run/php
 
 EXPOSE 9000
+
+FROM base AS dev
+ENV COMPOSER_ALLOW_SUPERUSER="1"
+ENV XDEBUG_MODE=off
+
+# Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints
+ENV PHP_IDE_CONFIG serverName=Docker
+RUN set -eux; \
+    mv "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"; \
+    # See https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host
+    # See https://github.com/docker/for-linux/issues/264
+    # The `client_host` below may optionally be replaced with `discover_client_host=yes`
+    # Add `start_with_request=yes` to start debug session on each request
+    echo "xdebug.client_host = host.docker.internal" >> "${PHP_INI_DIR}/conf.d/99-docker.ini"; \
+    apk add --no-cache --virtual .build-deps linux-headers ${PHPIZE_DEPS}; \
+    pecl install xdebug; \
+    docker-php-ext-enable xdebug; \
+    apk del .build-deps; \
+    apk  add --no-cache colordiff postgresql-client
+
+COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+FROM base as prod
+
+# Opcache settings
+ENV PHP_OPCACHE_ENABLE="1" \
+    PHP_OPCACHE_VALIDATE_TIMESTAMPS="0" \
+    PHP_OPCACHE_MAX_ACCELERATED_FILES="10000" \
+    PHP_OPCACHE_MEMORY_CONSUMPTION="192" \
+    PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
+
+RUN mv "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
