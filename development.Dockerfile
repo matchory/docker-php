@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM php:8.3-cli-alpine AS base
 LABEL maintainer="moritz@matchory.com"
 
@@ -102,7 +103,7 @@ RUN set -eux; \
 RUN ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
 
 # Copy custom PHP settings
-COPY php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
+COPY --link php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
 
 # Create the application user
 RUN adduser -D -G www-data -u "${uid}" -h "/home/${user}" "${user}"
