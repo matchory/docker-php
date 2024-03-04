@@ -9,6 +9,7 @@ RUN apk add --no-cache \
 		gettext \
 		fcgi \
 		file \
+        nano \
 		git \
 		acl \
 	;
