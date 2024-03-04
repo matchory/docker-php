@@ -117,7 +117,6 @@ EXPOSE 9000
 
 FROM base AS dev
 ENV COMPOSER_ALLOW_SUPERUSER="1"
-ENV XDEBUG_MODE=off
 
 # Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints
 ENV PHP_IDE_CONFIG serverName=Docker
