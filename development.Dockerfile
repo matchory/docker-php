@@ -32,6 +32,7 @@ RUN set -eux; \
       oniguruma-dev \
       linux-headers \
       openssl-dev \
+      c-ares-dev \
       libzip-dev \
       pcre2-dev \
       pcre-dev \
@@ -39,7 +40,6 @@ RUN set -eux; \
       curl-dev \
       zlib-dev \
       icu-dev \
-      c-ares-dev \
       ; \
     \
     curl -L -o /tmp/redis.tar.gz "https://github.com/phpredis/phpredis/archive/${REDIS_VERSION}.tar.gz"; \
