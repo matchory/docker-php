@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM dunglas/frankenphp-dev:php8.3-alpine
 
 LABEL org.opencontainers.image.title="Matchory PHP Web Development Image"
