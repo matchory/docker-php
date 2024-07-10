@@ -11,12 +11,14 @@ LABEL org.opencontainers.image.vendor="Mathory GmbH"
 # Persistent/Runtime dependencies
 RUN apk add --no-cache \
         postgresql-client \
-		gnu-libiconv \
+        gnu-libiconv \
         colordiff \
         libstdc++ \
-		gettext \
-		file \
-		acl \
+        gettext \
+        nodejs \
+        file \
+        npm \
+        acl \
 	;
 # install gnu-libiconv and set LD_PRELOAD env to make iconv work fully on Alpine image.
 # see https://github.com/docker-library/php/issues/240#issuecomment-763112749
@@ -105,7 +107,14 @@ RUN set -eux; \
     # Give write access to /data/caddy and /config/caddy
 	chown -R ${uid}:${uid} \
       /config/caddy \
-      /data/caddy
+      /data/caddy \
+    ; \
+    \
+    # Create the application folder
+    mkdir -p /app; \
+    cd /app; \
+    # Install Chokidar to watch for file changes
+    npm install --dev --quiet --no-progress chokidar
 
 COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
 
