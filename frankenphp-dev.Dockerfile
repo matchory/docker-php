@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM dunglas/frankenphp-dev:php8.3-alpine
+FROM dunglas/frankenphp:php8.3-alpine
 
 LABEL org.opencontainers.image.title="Matchory PHP Web Development Image"
 LABEL org.opencontainers.image.description="Matchory base image for local development of PHP web apps"
