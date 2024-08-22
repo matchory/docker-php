@@ -1,10 +1,9 @@
 # syntax=docker/dockerfile:1.7
 FROM dunglas/frankenphp:php8.3-alpine
-
 LABEL org.opencontainers.image.title="Matchory PHP Web"
 LABEL org.opencontainers.image.description="Matchory base image for PHP web apps"
 LABEL org.opencontainers.image.url=https://matchory.com
-LABEL org.opencontainers.image.source=https://bitbucketorg/matchory/php-web
+LABEL org.opencontainers.image.source=https://bitbucket.org/matchory/php-web
 LABEL org.opencontainers.image.licenses=MIT
 LABEL org.opencontainers.image.vendor="Mathory GmbH"
 
