@@ -10,8 +10,8 @@ LABEL org.opencontainers.image.vendor="Mathory GmbH"
 ARG user="5000"
 ARG uid="5000"
 
-ARG APCU_VERSION=5.1.23
-ARG REDIS_VERSION=6.0.2
+ARG APCU_VERSION=5.1.24
+ARG REDIS_VERSION=6.1.0
 
 # Opcache settings
 ENV PHP_OPCACHE_ENABLE="1" \
