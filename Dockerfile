@@ -1,5 +1,5 @@
-# syntax=docker/dockerfile:1.7
-FROM php:8.3-cli-alpine AS base
+# syntax=docker/dockerfile:1.12
+FROM php:8.4-cli-alpine AS base
 LABEL org.opencontainers.image.title="Matchory PHP Web Development Image"
 LABEL org.opencontainers.image.description="Matchory base image for local development of PHP web apps"
 LABEL org.opencontainers.image.url=https://matchory.com
