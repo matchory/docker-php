@@ -137,7 +137,8 @@ ENV COMPOSER_ALLOW_SUPERUSER="1"
 # Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints
 ENV PHP_IDE_CONFIG serverName=Docker
 
-EXPOSE 80
-EXPOSE 443
+EXPOSE 80/tcp
+EXPOSE 443/tcp
 EXPOSE 443/udp
-EXPOSE 2019
+EXPOSE 2019/tcp
+EXPOSE 2019/udp

@@ -42,7 +42,7 @@ apk add --no-cache --virtual .build-deps \
   icu-dev \
 ;
 
-curl -L -o /tmp/redis.tar.gz "https://github.com/phpredis/phpredis/archive/${REDIS_VERSION}.tar.gz"
+curl -Lo /tmp/redis.tar.gz "https://github.com/phpredis/phpredis/archive/${REDIS_VERSION}.tar.gz"
 tar xfz /tmp/redis.tar.gz
 rm -r /tmp/redis.tar.gz
 mkdir -p /usr/src/php/ext
@@ -111,7 +111,8 @@ CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD [ "curl", "-ISsfo", "/dev/null", "http://localhost:2019/metrics" ]
 
-EXPOSE 80
-EXPOSE 443
+EXPOSE 80/tcp
+EXPOSE 443/tcp
 EXPOSE 443/udp
-EXPOSE 2019
+EXPOSE 2019/tcp
+EXPOSE 2019/udp
