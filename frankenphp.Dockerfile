@@ -10,15 +10,8 @@ LABEL org.opencontainers.image.vendor="Mathory GmbH"
 ARG user="5000"
 ARG uid="5000"
 
-ARG APCU_VERSION=5.1.24
-ARG REDIS_VERSION=6.1.0
-
-# Opcache settings
-ENV PHP_OPCACHE_ENABLE="1" \
-    PHP_OPCACHE_VALIDATE_TIMESTAMPS="0" \
-    PHP_OPCACHE_MAX_ACCELERATED_FILES="10000" \
-    PHP_OPCACHE_MEMORY_CONSUMPTION="192" \
-    PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
+ARG APCU_VERSION="5.1.24"
+ARG REDIS_VERSION="6.1.0"
 
 # Persistent/Runtime dependencies
 RUN apk add --no-cache \
