@@ -126,7 +126,8 @@ EOF
 COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
-HEALTHCHECK CMD curl -f http://localhost:2019/metrics || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD [ "curl", "-ISsfo", "/dev/null", "http://localhost:2019/metrics" ]
 
 ENV COMPOSER_ALLOW_SUPERUSER="1"
 
