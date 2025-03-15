@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.13
-FROM php:8.4-cli AS base
+FROM php:8.4-cli-alpine AS base
 ARG user="5000"
 ARG uid="5000"
 
@@ -7,21 +7,9 @@ ARG APCU_VERSION="5.1.24"
 ARG REDIS_VERSION="6.1.0"
 ARG OPENSWOOLE_VERSION="25.2.0"
 
-# Persistent/Runtime dependencies
-RUN <<EOF
-set -eux
-apt-get update
-apt-get install --yes --no-install-recommends \
-  postgresql-client \
-  libstdc++6 \
-  colordiff \
-  gettext \
-  file \
-  acl \
-;
-apt-get purge --yes --auto-remove
-rm -rf /var/lib/apt/lists/*
-EOF
+# Install gnu-libiconv and set LD_PRELOAD env to make iconv work fully on Alpine image.
+# see https://github.com/docker-library/php/issues/240#issuecomment-763112749
+ENV LD_PRELOAD="/usr/lib/preloadable_libiconv.so"
 
 # Create the application user
 RUN <<EOF
@@ -29,28 +17,37 @@ RUN <<EOF
 
     # Add a non-root user to run the application
     adduser -D -G www-data -u "${uid}" -h "/home/${user}" "${user}"
+    ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
 
-    # region Install Build Dependencies
-    apt-get update
-    apt-get install -y --no-install-recommends \
+    # region Dependencies
+    # Runtime dependencies
+    apk add --no-cache \
+      gnu-libiconv \
+      libstdc++ \
+      gettext \
+      fcgi \
+      file \
+      git \
+      acl \
+    ;
+
+    # Build dependencies
+    apk add --no-cache --virtual .build-deps \
       ${PHPIZE_DEPS} \
-      linux-headers-generic \
       libmemcached-dev \
       postgresql-dev \
       oniguruma-dev \
-      gnu-libiconv \
+      linux-headers \
       openssl-dev \
       libzip-dev \
       c-ares-dev \
       pcre2-dev \
-      libstdc++ \
       pcre-dev \
       yaml-dev \
       curl-dev \
       zlib-dev \
       icu-dev \
-      fcgi \
-    ; \
+    ;
     # endregion
 
     # region Install redis
@@ -116,23 +113,15 @@ RUN <<EOF
     ;
     # endregion
 
-    # region Remove Build Dependencies
-    # Reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
-    apt-mark auto '.*' > /dev/null
-    [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark
-
-    # Find and mark runtime dependencies for installed extensions
-    find /usr/local -type f -executable -exec ldd '{}' ';' \
-        | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
+    # Remove build dependencies
+    runDeps="$( \
+      scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
+        | tr ',' '\n' \
         | sort -u \
-        | xargs -r dpkg-query --search \
-        | cut -d: -f1 \
-        | sort -u \
-        | xargs -r apt-mark manual
-
-    # Remove build dependencies and clean up
-    apt-get purge --yes --auto-remove -o APT::AutoRemove::RecommendsImportant=false
-    rm -rf /var/lib/apt/lists/*
+        | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+    )"
+    apk add --no-cache --virtual .phpexts-rundeps ${runDeps}
+    apk del .build-deps
     # endregion
 EOF
 
@@ -153,12 +142,17 @@ RUN <<EOF
     set -eux
     ln -sf "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
 
-    # region Install Build Dependencies
-    savedAptMark="$(apt-mark showmanual)"
-    apt-get update
-    apt-get install --yes --no-install-recommends \
+    # region Dependencies
+    # Runtime dependencies
+    apk add --no-cache \
+      colordiff \
+      postgresql-client \
+    ;
+
+    # Build dependencies
+    apk add --no-cache --virtual .build-deps \
       ${PHPIZE_DEPS} \
-      linux-headers-generic \
+      linux-headers \
     ;
     # endregion
 
@@ -167,28 +161,14 @@ RUN <<EOF
     docker-php-ext-enable xdebug
     # endregion
 
-    # region Remove Build Dependencies
-    apt-mark auto '.*' > /dev/null
-    [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark
-    find /usr/local -type f -executable -exec ldd '{}' ';' \
-        | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
-        | sort -u \
-        | xargs -r dpkg-query --search \
-        | cut -d: -f1 \
-        | sort -u \
-        | xargs -r apt-mark manual
-    apt-get purge --yes --auto-remove -o APT::AutoRemove::RecommendsImportant=false
-    rm -rf /var/lib/apt/lists/*
-    # endregion
+    apk del .build-deps
 
-    # region Configure XDebug
     # See https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host
     # See https://github.com/docker/for-linux/issues/264
     # The `client_host` below may optionally be replaced with `discover_client_host=yes`
     # Add `start_with_request=yes` to start debug session on each request
     echo "xdebug.client_host = host.docker.internal" >> "${PHP_INI_DIR}/conf.d/docker-php-ext-xdebug.ini";
     echo "xdebug.mode = off" >> "${PHP_INI_DIR}/conf.d/docker-php-ext-xdebug.ini";
-    # endregion
 EOF
 
 COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
