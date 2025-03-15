@@ -166,7 +166,7 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_USERNAME || github.repository_owner }}
+          username: ${{ secrets.DOCKER_USERNAME || vars.DOCKER_USERNAME || github.repository_owner }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Determine Image Name
@@ -177,7 +177,7 @@ jobs:
           echo "IMAGE_NAME=${{ github.repository_owner }}/${{ vars.IMAGE_NAME || 'php' }}" >> $GITHUB_ENV
           echo "VERSION=$( \
             echo "${{ matrix.dockerfile }}" | \
-            sed 's/.Dockerfile//' | \
+            sed -E 's/.?Dockerfile//' | \
             tr '/' '-' \
           )${{ matrix.stage == 'dev' && '-dev' || '' }}" >> $GITHUB_ENV
 
