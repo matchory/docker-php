@@ -198,12 +198,12 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          build-args: |
+            DOCKER_METADATA_OUTPUT_JSON
           file: ./${{ matrix.dockerfile }}
           target: ${{ matrix.stage }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
-          tags: ${{ steps.docker_meta.outputs.tags }}
-          labels: ${{ steps.docker_meta.outputs.labels }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:${{ env.VERSION }}
           cache-to: type=inline
           provenance: true
