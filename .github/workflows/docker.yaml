@@ -175,11 +175,13 @@ jobs:
         # language=bash
         run: |
           echo "IMAGE_NAME=${{ github.repository_owner }}/${{ vars.IMAGE_NAME || 'php' }}" >> $GITHUB_ENV
-          echo "VERSION=$( \
+          base_version=$( \
             echo "${{ matrix.dockerfile }}" | \
             sed -E 's/.?Dockerfile//' | \
             tr '/' '-' \
-          )${{ matrix.stage == 'dev' && '-dev' || '' }}" >> $GITHUB_ENV
+          )
+          suffix="${{ matrix.stage == 'dev' && 'dev' || '' }}"
+          echo "VERSION=${base_version:-latest}${suffix:+-}${suffix}" >> $GITHUB_ENV
 
       - name: Set up Docker Metadata
         id: meta
