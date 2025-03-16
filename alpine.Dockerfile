@@ -63,7 +63,6 @@ RUN <<EOF
     docker-php-ext-configure zip
     docker-php-ext-install -j$(nproc) \
       pdo_pgsql \
-      mbstring \
       sockets \
       opcache \
       bcmath \
