@@ -148,6 +148,8 @@ EXPOSE 2019/tcp
 EXPOSE 2019/udp
 
 FROM base AS dev
+ARG user="php"
+ARG uid="5000"
 ENV COMPOSER_ALLOW_SUPERUSER="1"
 ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="1"
 
@@ -188,12 +190,15 @@ EOF
 
 COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+WORKDIR "/app"
+
 ONBUILD ARG user="php"
 ONBUILD ARG uid="5000"
-ONBUILD USER "${uid}:${uid}"
-ONBUILD WORKDIR "/app"
+USER "${uid}:${uid}"
 
 FROM base AS prod
+ARG user="php"
+ARG uid="5000"
 ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="0"
 ENV PHP_OPCACHE_MAX_ACCELERATED_FILES="10000"
 ENV PHP_OPCACHE_MEMORY_CONSUMPTION="192"
@@ -201,7 +206,8 @@ ENV PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 
 RUN ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
 
+WORKDIR "/app"
+
 ONBUILD ARG user="php"
 ONBUILD ARG uid="5000"
-ONBUILD USER "${uid}:${uid}"
-ONBUILD WORKDIR "/app"
+USER "${uid}:${uid}"
