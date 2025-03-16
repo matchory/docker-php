@@ -1,51 +1,50 @@
 # syntax=docker/dockerfile:1.13
-FROM dunglas/frankenphp:1.4-php8.4 AS base
-ARG user="5000"
-ARG uid="5000"
-
+ARG BASE_IMAGE="dunglas/frankenphp:1.4-php8.4"
+FROM dunglas/frankenphp:1.4-php8.4 AS upstream
+FROM upstream AS base
 ARG APCU_VERSION="5.1.24"
 ARG REDIS_VERSION="6.1.0"
-
-# Persistent/Runtime dependencies
-RUN <<EOF
-set -eux
-apt-get update
-apt-get install --yes --no-install-recommends \
-  postgresql-client \
-  libstdc++6 \
-  colordiff \
-  gettext \
-  file \
-  acl \
-;
-apt-get purge --yes --auto-remove
-rm -rf /var/lib/apt/lists/*
-EOF
+ARG user="php"
+ARG uid="5000"
 
 RUN <<EOF
     set -eux
 
-    # region Install Build Dependencies
-    # Store the list of manually installed packages
-    savedAptMark="$(apt-mark showmanual)"
-
-    apt-get update
-    apt-get install --yes --no-install-recommends \
-      ${PHPIZE_DEPS} \
-      linux-headers-generic \
-      libcurl4-openssl-dev \
+    # region Install Dependencies
+    export RUNTIME_DEPENDENCIES="\
+      postgresql-client \
       libmemcached-dev \
-      libonig-dev \
+      ca-certificates \
       libyaml-dev \
       libzip-dev \
       zlib1g-dev \
+      gettext \
+      openssl \
+      file \
+    "
+    export BUILD_DEPENDENCIES="\
+      ${PHPIZE_DEPS} \
+      linux-headers-generic \
+      libcurl4-openssl-dev \
+      libpcre3-dev \
+      libonig-dev \
+      libssl-dev \
       libicu-dev \
       libpq-dev \
-    ;
+    "
+
+    apt-get update
+    apt-get install \
+        --yes \
+        --no-install-recommends \
+      ${BUILD_DEPENDENCIES} \
+      ${RUNTIME_DEPENDENCIES}
     # endregion
 
-    # region Install Extensions
+    # region Install Redis extension
     curl \
+        --fail \
+        --silent \
         --location \
         --output /tmp/redis.tar.gz \
       "https://github.com/phpredis/phpredis/archive/${REDIS_VERSION}.tar.gz"
@@ -53,7 +52,10 @@ RUN <<EOF
     rm -r /tmp/redis.tar.gz
     mkdir -p /usr/src/php/ext
     mv phpredis-* /usr/src/php/ext/redis
+    # endregion
 
+    # region Install Extensions
+    docker-php-source extract
     docker-php-ext-configure zip
     docker-php-ext-install -j$(nproc) \
       pdo_pgsql \
@@ -70,13 +72,10 @@ RUN <<EOF
     # endregion
 
     # region Install PECL Extensions
-    # The order of the extensions is important
-    pecl install \
-      memcached \
-      excimer \
-      "apcu-${APCU_VERSION}" \
-      yaml \
-    ;
+    pecl install memcached
+    pecl install excimer
+    pecl install "apcu-${APCU_VERSION}"
+    pecl install yaml
     pecl clear-cache || true
     docker-php-ext-enable \
       memcached \
@@ -85,97 +84,98 @@ RUN <<EOF
       apcu \
       yaml \
     ;
+    docker-php-source delete
     # endregion
 
     # region Remove Build Dependencies
-    # Reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
-    apt-mark auto '.*' > /dev/null
-    [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark
-
-    # Find and mark runtime dependencies for installed extensions
-    find /usr/local -type f -executable -exec ldd '{}' ';' \
-        | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
-        | sort -u \
-        | xargs -r dpkg-query --search \
-        | cut -d: -f1 \
-        | sort -u \
-        | xargs -r apt-mark manual
-
-    # Remove build dependencies and clean up
-    apt-get purge --yes --auto-remove -o APT::AutoRemove::RecommendsImportant=false
-    rm -rf /var/lib/apt/lists/*
+    apt-get purge \
+        --option APT::AutoRemove::RecommendsImportant=false \
+        --auto-remove \
+        --yes \
+      ${BUILD_DEPENDENCIES} \
+    ;
+    rm -rf \
+      /usr/local/lib/php/test \
+      /usr/local/bin/phpdbg \
+      /usr/local/bin/docker-php-ext-* \
+      /usr/local/bin/docker-php-source \
+      /usr/local/bin/install-php-extensions \
+      /usr/local/bin/pear* \
+      /usr/local/bin/pecl \
+      /usr/local/bin/phpize \
+      /var/lib/apt/lists/* \
+      /var/cache/* \
+      /usr/src/* \
+      /tmp/*
     # endregion
+
+    # Add a non-root user to run the application
+    addgroup \
+        --gid "${uid}" \
+      "${user}"
+    adduser \
+        --home "/home/${user}" \
+        --disabled-password \
+        --disabled-login \
+        --uid "${uid}" \
+        --gid ${uid} \
+        --system \
+      "${user}"
+
+    # Add additional capability to bind to port 80 and 443
+    setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/frankenphp
+
+    # Give write access to /data/caddy and /config/caddy
+    chown -R "${uid}:${uid}" \
+        /config/caddy \
+        /data/caddy
+
+    # Create the application folder
+    mkdir -p /app
 EOF
 
 # Copy custom PHP settings
-COPY --link php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
-COPY --link Caddyfile /etc/caddy/Caddyfile
-
-RUN <<EOF
-set -eux
-
-# Create the application user
-adduser -D -G www-data -u "${uid}" -h "/home/${user}" "${user}"
-
-# Add additional capability to bind to port 80 and 443
-setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/frankenphp
-
-# Give write access to /data/caddy and /config/caddy
-chown -R "${uid}:${uid}" \
-    /config/caddy \
-    /data/caddy
-
-# Create the application folder
-mkdir -p /app
-cd /app
-EOF
+COPY --link ./php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
+COPY --link ./Caddyfile /etc/caddy/Caddyfile
 
 CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD [ "curl", "-ISsfo", "/dev/null", "http://localhost:2019/metrics" ]
 
+VOLUME /app
 EXPOSE 80/tcp
 EXPOSE 443/tcp
 EXPOSE 443/udp
 EXPOSE 2019/tcp
 EXPOSE 2019/udp
-VOLUME /app
 
 FROM base AS dev
 ENV COMPOSER_ALLOW_SUPERUSER="1"
 ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="1"
-ENV PHP_IDE_CONFIG serverName=Docker
 
-RUN <<EOF
+# Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints
+ENV PHP_IDE_CONFIG="serverName=Docker"
+
+RUN --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin <<EOF
     set -eux
     ln -sf "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
 
-    # region Install Build Dependencies
-    savedAptMark="$(apt-mark showmanual)"
-    apt-get update
-    apt-get install --yes --no-install-recommends \
-      ${PHPIZE_DEPS} \
-      linux-headers-generic \
-    ;
-    # endregion
-
     # region Install XDebug
+    apt-get update
+    apt-get install \
+        --yes \
+        --no-install-recommends \
+      ${PHPIZE_DEPS}
     pecl install xdebug
     docker-php-ext-enable xdebug
-    # endregion
-
-    # region Remove Build Dependencies
-    apt-mark auto '.*' > /dev/null
-    [ -z "$savedAptMark" ] || apt-mark manual $savedAptMark
-    find /usr/local -type f -executable -exec ldd '{}' ';' \
-        | awk '/=>/ { so = $(NF-1); if (index(so, "/usr/local/") == 1) { next }; gsub("^/(usr/)?", "", so); printf "*%s\n", so }' \
-        | sort -u \
-        | xargs -r dpkg-query --search \
-        | cut -d: -f1 \
-        | sort -u \
-        | xargs -r apt-mark manual
-    apt-get purge --yes --auto-remove -o APT::AutoRemove::RecommendsImportant=false
-    rm -rf /var/lib/apt/lists/*
+    apt-get purge \
+        --yes \
+        --auto-remove \
+      ${PHPIZE_DEPS}
+    rm -rf \
+      /var/lib/apt/lists/* \
+      /var/cache/* \
+      /tmp/*
     # endregion
 
     # region Configure XDebug
@@ -190,11 +190,20 @@ EOF
 
 COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+ONBUILD ARG user="php"
+ONBUILD ARG uid="5000"
+ONBUILD USER "${uid}:${uid}"
+ONBUILD WORKDIR "/app"
+
 FROM base AS prod
-ENV PHP_OPCACHE_ENABLE="1"
 ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="0"
 ENV PHP_OPCACHE_MAX_ACCELERATED_FILES="10000"
 ENV PHP_OPCACHE_MEMORY_CONSUMPTION="192"
 ENV PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 
 RUN ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
+
+ONBUILD ARG user="php"
+ONBUILD ARG uid="5000"
+ONBUILD USER "${uid}:${uid}"
+ONBUILD WORKDIR "/app"
