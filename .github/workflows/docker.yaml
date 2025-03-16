@@ -213,7 +213,8 @@ jobs:
           annotations: ${{ steps.meta.outputs.annotations }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ env.VERSION }}
           cache-to: type=registry,mode=max,ref=${{ env.IMAGE_NAME }}:buildcache-${{ env.VERSION }}
-          provenance: true
+          provenance: mode=max
+          sbom: true
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v2
