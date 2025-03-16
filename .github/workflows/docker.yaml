@@ -195,9 +195,9 @@ jobs:
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.version=${{ env.VERSION }}
           tags: |
-            type=sha,enable=${{ env.VERSION == '' }}
-            type=raw,value=latest,enable=${{ env.VERSION == '' }}
-            type=sha,enable=${{ env.VERSION != '' }},prefix=${{ env.VERSION }}-
+            type=sha
+            type=sha,prefix=${{ env.VERSION }}-
+            type=raw,value=${{ env.VERSION }}
 
       - name: Build and Push
         id: build
