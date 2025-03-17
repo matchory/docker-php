@@ -74,6 +74,8 @@ jobs:
 
         # language=bash
         run: |
+          # Check if the base images have changed
+          
           # If not a scheduled run, always consider the images changed
           if [[ "${GITHUB_EVENT_NAME}" != "schedule"  ]]; then
               echo changed=true >> "${GITHUB_OUTPUT}"
@@ -81,7 +83,7 @@ jobs:
           fi
 
           digests=()
-          for image in "${base_images}"; do
+          for image in $(echo "${base_images}" | tr ' ' '\n'); do
           
             # Fetch image manifest without pulling the full image, so we can extract the digests
             manifest=$(docker manifest inspect "${image}")
