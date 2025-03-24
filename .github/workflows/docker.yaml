@@ -75,7 +75,7 @@ jobs:
         # language=bash
         run: |
           # Check if the base images have changed
-          
+
           # If not a scheduled run, always consider the images changed
           if [[ "${GITHUB_EVENT_NAME}" != "schedule"  ]]; then
               echo changed=true >> "${GITHUB_OUTPUT}"
@@ -84,7 +84,7 @@ jobs:
 
           digests=()
           for image in $(echo "${base_images}" | tr ' ' '\n'); do
-          
+
             # Fetch image manifest without pulling the full image, so we can extract the digests
             manifest=$(docker manifest inspect "${image}")
 
@@ -121,10 +121,10 @@ jobs:
 
           if [[ -f cached-digests.txt && "$(diff -q latest-digests.txt cached-digests.txt)" == "" ]]; then
             echo "No changes in base images."
-            echo "changed=false" >> "${GITHUB_ENV}"
+            echo changed=false >> "${GITHUB_OUTPUT}"
           else
             echo "Base images changed."
-            echo "changed=true" >> "${GITHUB_ENV}"
+            echo changed=true >> "${GITHUB_OUTPUT}"
 
             # Save for next run
             cp latest-digests.txt cached-digests.txt
