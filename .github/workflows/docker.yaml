@@ -225,8 +225,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           annotations: ${{ steps.meta.outputs.annotations }}
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache-${{ env.VERSION }}
-          cache-to: type=registry,mode=max,ref=${{ env.IMAGE_NAME }}:buildcache-${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           provenance: mode=max
           sbom: true
 
