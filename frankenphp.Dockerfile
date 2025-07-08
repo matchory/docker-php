@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.13
-FROM dunglas/frankenphp:1.6-php8.4 AS upstream
+FROM dunglas/frankenphp:1.8-php8.4 AS upstream
 FROM upstream AS base
 ARG APCU_VERSION="5.1.24"
 ARG REDIS_VERSION="6.2.0"
