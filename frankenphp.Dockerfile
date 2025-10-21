@@ -1,43 +1,51 @@
 # syntax=docker/dockerfile:1
 FROM dunglas/frankenphp:1.9-php8.4 AS upstream
-FROM upstream AS base
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
+    set -eux
+
+    apt-get update
+    apt-get install \
+        --yes \
+        --no-install-recommends \
+      postgresql-client \
+      libmemcached11t64 \
+      ca-certificates \
+      libyaml-0-2 \
+      libicu76 \
+      libzip5 \
+      gettext \
+      openssl \
+      zlib1g \
+      file \
+    ;
+EOF
+
+FROM upstream AS builder
 ARG APCU_VERSION="5.1.27"
 ARG REDIS_VERSION="6.2.0"
-ARG user="php"
-ARG uid="5000"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
     set -eux
 
     # region Install Dependencies
-    export RUNTIME_DEPENDENCIES="\
-      postgresql-client \
-      libmemcached-dev \
-      ca-certificates \
-      libyaml-dev \
-      libzip-dev \
-      zlib1g-dev \
-      gettext \
-      openssl \
-      file \
-    "
-    export BUILD_DEPENDENCIES="\
-      ${PHPIZE_DEPS} \
-      linux-headers-generic \
-      libcurl4-openssl-dev \
-      libonig-dev \
-      libssl-dev \
-      libicu-dev \
-      libpq-dev \
-    "
-
     apt-get update
     apt-get install \
         --yes \
         --no-install-recommends \
-      ${BUILD_DEPENDENCIES} \
-      ${RUNTIME_DEPENDENCIES}
+      ${PHPIZE_DEPS} \
+      linux-headers-generic \
+      libcurl4-openssl-dev \
+      libmemcached-dev \
+      libonig-dev \
+      libyaml-dev \
+      libssl-dev \
+      libicu-dev \
+      libzip-dev \
+      zlib1g-dev \
+      libpq-dev \
+    ;
     # endregion
 
     # region Install Redis extension
@@ -81,30 +89,36 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       apcu \
       yaml \
     ;
-    docker-php-source delete
     # endregion
+EOF
 
+FROM upstream AS base
+ARG user="php"
+ARG uid="5000"
+
+RUN <<EOF
     # region Remove Build Dependencies
     apt-get purge \
         --option APT::AutoRemove::RecommendsImportant=false \
         --auto-remove \
         --yes \
-      ${BUILD_DEPENDENCIES} \
     ;
+
     rm -rf \
       /usr/local/lib/php/test \
       /usr/local/bin/phpdbg \
-      /usr/local/bin/docker-php-ext-* \
-      /usr/local/bin/docker-php-source \
       /usr/local/bin/install-php-extensions \
+      /usr/local/bin/docker-php-source \
+      /usr/local/bin/docker-php-ext-* \
+      /usr/local/bin/phpize \
       /usr/local/bin/pear* \
       /usr/local/bin/pecl \
-      /usr/local/bin/phpize \
       /usr/src/* \
-      /tmp/*
+      /tmp/* \
+    ;
     # endregion
 
-    # Add a non-root user to run the application
+    # region Add a non-root user to run the application
     addgroup \
         --gid "${uid}" \
       "${user}"
@@ -116,6 +130,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         --gid ${uid} \
         --system \
       "${user}"
+    # endregion
 
     # Add additional capability to bind to port 80 and 443
     setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/frankenphp
@@ -128,6 +143,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     # Create the application folder
     mkdir -p /app
 EOF
+
+COPY --link --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
+COPY --link --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
 # Copy custom PHP settings
 COPY --link ./php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
@@ -153,7 +171,9 @@ ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="1"
 # Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints
 ENV PHP_IDE_CONFIG="serverName=Docker"
 
-RUN --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin <<EOF
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin <<EOF
     set -eux
     ln -sf "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
 
@@ -169,10 +189,7 @@ RUN --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin 
         --yes \
         --auto-remove \
       ${PHPIZE_DEPS}
-    rm -rf \
-      /var/lib/apt/lists/* \
-      /var/cache/* \
-      /tmp/*
+    rm -rf /tmp/*
     # endregion
 
     # region Configure XDebug
