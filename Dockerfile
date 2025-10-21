@@ -27,7 +27,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       ${PHPIZE_DEPS} \
       linux-headers-generic \
       libcurl4-openssl-dev \
-      libpcre3-dev \
       libonig-dev \
       libssl-dev \
       libicu-dev \
