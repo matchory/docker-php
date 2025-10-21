@@ -7,7 +7,8 @@ ARG OPENSWOOLE_VERSION="25.2.0"
 ARG user="php"
 ARG uid="5000"
 
-RUN <<EOF
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
     set -eux
 
     # region Install Dependencies
@@ -103,8 +104,6 @@ RUN <<EOF
       /usr/local/bin/pear* \
       /usr/local/bin/pecl \
       /usr/local/bin/phpize \
-      /var/lib/apt/lists/* \
-      /var/cache/* \
       /usr/src/* \
       /tmp/*
     # endregion
