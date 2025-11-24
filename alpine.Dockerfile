@@ -195,23 +195,20 @@ ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="1"
 # Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints
 ENV PHP_IDE_CONFIG="serverName=Docker"
 
-RUN --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin <<EOF
+RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
+    --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin \
+    <<EOF
     set -eux
     ln -sf "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
 
     # region Install XDebug
-    apk add \
-        --no-cache \
-        --virtual .build-deps \
-      ${PHPIZE_DEPS} \
-      linux-headers \
-    ;
-    pecl install xdebug
-    docker-php-ext-enable xdebug
-    apk del .build-deps
-    rm -rf \
-      /var/cache/* \
-      /tmp/*
+    # TODO: Switch to stable when available
+    if php --version | grep -q "PHP 8\.5"; then
+      pie install xdebug/xdebug:^3@alpha
+    else
+      pie install xdebug/xdebug
+    fi
+    rm -rf /tmp/*
     # endregion
 
     # region Configure XDebug

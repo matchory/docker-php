@@ -28,8 +28,8 @@ FROM upstream AS builder
 ARG PIE_VERSION="1.3.0-rc.2"
 ARG UV_VERSION="0.3.0"
 
-COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
+    --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
     set -eux
 
@@ -77,10 +77,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
     # region Install uv extension
         curl \
-        --fail \
-        --silent \
-        --location \
         --output /tmp/uv.tar.gz \
+        --location \
+        --silent \
+        --fail \
       "https://github.com/amphp/ext-uv/archive/v${UV_VERSION}.tar.gz"
     tar xfz /tmp/uv.tar.gz
     rm -r /tmp/uv.tar.gz
@@ -198,23 +198,19 @@ ENV PHP_IDE_CONFIG="serverName=Docker"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin <<EOF
+    --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
+    --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin \
+    <<EOF
     set -eux
     ln -sf "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
 
     # region Install XDebug
-    apt-get update
-    apt-get install \
-        --yes \
-        --no-install-recommends \
-      ${PHPIZE_DEPS} \
-    ;
-    pecl install xdebug
-    docker-php-ext-enable xdebug
-    apt-get purge \
-        --yes \
-        --auto-remove \
-      ${PHPIZE_DEPS}
+    # TODO: Switch to stable when available
+    if php --version | grep -q "PHP 8\.5"; then
+      pie install xdebug/xdebug:^3@alpha
+    else
+      pie install xdebug/xdebug
+    fi
     rm -rf /tmp/*
     # endregion
 
