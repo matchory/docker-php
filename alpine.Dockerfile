@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.4"
+ARG PIE_VERSION="1.3.0-rc.3"
+FROM ghcr.io/php/pie:${PIE_VERSION} AS pie
 FROM php:${PHP_VERSION}-cli-alpine AS upstream
 FROM upstream AS base
-ARG PIE_VERSION="1.3.0-rc.2"
 ARG UV_VERSION="0.3.0"
 ARG user="php"
 ARG uid="5000"
@@ -11,8 +12,8 @@ ARG uid="5000"
 # see https://github.com/docker-library/php/issues/240#issuecomment-763112749
 ENV LD_PRELOAD="/usr/lib/preloadable_libiconv.so"
 
-COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
-RUN <<EOF
+RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
+    <<EOF
     set -eux
 
     # region Install Dependencies
@@ -71,19 +72,6 @@ RUN <<EOF
     #;
     # endregion
 
-    # region Install uv extension
-        curl \
-        --fail \
-        --silent \
-        --location \
-        --output /tmp/uv.tar.gz \
-      "https://github.com/amphp/ext-uv/archive/v${UV_VERSION}.tar.gz"
-    tar xfz /tmp/uv.tar.gz
-    rm -r /tmp/uv.tar.gz
-    mkdir -p /usr/src/php/ext
-    mv ext-uv-${UV_VERSION} /usr/src/php/ext/uv
-    # endregion
-
     # region Install built-in extensions
     docker-php-ext-configure zip
     docker-php-ext-install -j$(nproc) \
@@ -94,7 +82,6 @@ RUN <<EOF
       pcntl \
       intl \
       zip \
-      uv \
     ;
 
     # If we're running on PHP 8.4, install the opcache extension (it's bundled in later versions)
@@ -103,11 +90,18 @@ RUN <<EOF
     fi
     # endregion
 
+    # region Install uv extension
+    pecl config-set preferred_state beta
+    pecl install "uv-${UV_VERSION}"
+    pecl config-set preferred_state stable
+    # endregion
+
     # region Install PECL extensions
     pecl install excimer
     pecl clear-cache || true
     docker-php-ext-enable \
       excimer \
+      uv \
     ;
     # endregion
 
@@ -194,7 +188,7 @@ ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="1"
 # Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints
 ENV PHP_IDE_CONFIG="serverName=Docker"
 
-RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
+RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin \
     <<EOF
     set -eux
@@ -210,7 +204,7 @@ RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
 
     # TODO: Switch to stable when available
     if php --version | grep -q "PHP 8\.5"; then
-      pie install xdebug/xdebug:^3@alpha
+      pie install xdebug/xdebug:@alpha
     else
       pie install xdebug/xdebug
     fi

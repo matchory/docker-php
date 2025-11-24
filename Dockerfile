@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.4"
+ARG PIE_VERSION="1.3.0-rc.3"
+FROM ghcr.io/php/pie:${PIE_VERSION} AS pie
 FROM php:${PHP_VERSION}-cli AS upstream
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
@@ -25,10 +27,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 EOF
 
 FROM upstream AS builder
-ARG PIE_VERSION="1.3.0-rc.2"
 ARG UV_VERSION="0.3.0"
 
-RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
+RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
     set -eux
@@ -75,19 +76,6 @@ RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
     #;
     # endregion
 
-    # region Install uv extension
-        curl \
-        --output /tmp/uv.tar.gz \
-        --location \
-        --silent \
-        --fail \
-      "https://github.com/amphp/ext-uv/archive/v${UV_VERSION}.tar.gz"
-    tar xfz /tmp/uv.tar.gz
-    rm -r /tmp/uv.tar.gz
-    mkdir -p /usr/src/php/ext
-    mv ext-uv-${UV_VERSION} /usr/src/php/ext/uv
-    # endregion
-
     # region Install built-in extensions
     docker-php-ext-configure zip
     docker-php-ext-install -j$(nproc) \
@@ -98,7 +86,6 @@ RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
       pcntl \
       intl \
       zip \
-      uv \
     ;
 
     # If we're running on PHP 8.4, install the opcache extension (it's bundled in later versions)
@@ -107,11 +94,18 @@ RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
     fi
     # endregion
 
+    # region Install uv extension
+    pecl config-set preferred_state beta
+    pecl install "uv-${UV_VERSION}"
+    pecl config-set preferred_state stable
+    # endregion
+
     # region Install PECL extensions
     pecl install excimer
     pecl clear-cache || true
     docker-php-ext-enable \
       excimer \
+      uv \
     ;
     # endregion
 
@@ -197,7 +191,7 @@ ENV PHP_IDE_CONFIG="serverName=Docker"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
+    --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin \
     <<EOF
     set -eux
@@ -206,7 +200,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     # region Install XDebug
     # TODO: Switch to stable when available
     if php --version | grep -q "PHP 8\.5"; then
-      pie install xdebug/xdebug:^3@alpha
+      pie install xdebug/xdebug:@alpha
     else
       pie install xdebug/xdebug
     fi
