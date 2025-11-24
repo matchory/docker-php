@@ -26,6 +26,7 @@ RUN <<EOF
       yaml-dev \
       zlib-dev \
       gettext \
+      libuv \
       unzip \
       fcgi \
       file \

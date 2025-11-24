@@ -17,6 +17,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       libzip5 \
       gettext \
       openssl \
+      libuv1 \
       zlib1g \
       unzip \
       file \
