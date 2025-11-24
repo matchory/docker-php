@@ -218,6 +218,8 @@ jobs:
           context: .
           file: ./${{ matrix.dockerfile }}
           target: ${{ matrix.stage }}
+          build-args:
+            PHP_VERSION: ${{ matrix.php-version }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}

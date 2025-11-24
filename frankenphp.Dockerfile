@@ -18,14 +18,16 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       gettext \
       openssl \
       zlib1g \
+      unzip \
       file \
     ;
 EOF
 
 FROM upstream AS builder
-ARG APCU_VERSION="5.1.27"
-ARG REDIS_VERSION="6.3.0"
+ARG PIE_VERSION="1.3.0-rc.2"
+ARG UV_VERSION="0.3.0"
 
+COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
     set -eux
@@ -39,56 +41,76 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       linux-headers-generic \
       libcurl4-openssl-dev \
       libmemcached-dev \
+      libsqlite3-dev \
       libonig-dev \
       libyaml-dev \
       libssl-dev \
       libicu-dev \
       libzip-dev \
       zlib1g-dev \
+      libuv1-dev \
       libpq-dev \
+      git \
     ;
     # endregion
 
-    # region Install Redis extension
-    curl \
+    docker-php-source extract
+
+    # region Install PIE extensions
+    pie install -j$(nproc) phpredis/phpredis \
+      --enable-redis \
+    ;
+    pie install -j$(nproc) apcu/apcu \
+      --enable-apcu \
+    ;
+    pie install -j$(nproc) pecl/yaml
+    pie install -j$(nproc) php-memcached/php-memcached \
+      --enable-memcached-session \
+      --enable-memcached-json \
+    ;
+    #pie install -j$(nproc) csvtoolkit/fastcsv \
+    #  --enable-fastcsv \
+    #;
+    # endregion
+
+    # region Install uv extension
+        curl \
         --fail \
         --silent \
         --location \
-        --output /tmp/redis.tar.gz \
-      "https://github.com/phpredis/phpredis/archive/${REDIS_VERSION}.tar.gz"
-    tar xfz /tmp/redis.tar.gz
-    rm -r /tmp/redis.tar.gz
+        --output /tmp/uv.tar.gz \
+      "https://github.com/amphp/ext-uv/archive/v${UV_VERSION}.tar.gz"
+    tar xfz /tmp/uv.tar.gz
+    rm -r /tmp/uv.tar.gz
     mkdir -p /usr/src/php/ext
-    mv phpredis-* /usr/src/php/ext/redis
+    mv ext-uv-${UV_VERSION} /usr/src/php/ext/uv
     # endregion
 
-    # region Install Extensions
-    docker-php-source extract
+    # region Install built-in extensions
     docker-php-ext-configure zip
     docker-php-ext-install -j$(nproc) \
+      pdo_sqlite \
       pdo_pgsql \
       sockets \
-      opcache \
       bcmath \
       pcntl \
-      redis \
       intl \
       zip \
+      uv \
     ;
+
+    # If we're running on PHP 8.4, install the opcache extension (it's bundled in later versions)
+    if php --version | grep -q "PHP 8\.4"; then
+      docker-php-ext-install -j$(nproc) opcache
+    fi
+
     # endregion
 
-    # region Install PECL Extensions
-    pecl install memcached
+    # region Install PECL extensions
     pecl install excimer
-    pecl install "apcu-${APCU_VERSION}"
-    pecl install yaml
     pecl clear-cache || true
     docker-php-ext-enable \
-      memcached \
-      opcache \
       excimer \
-      apcu \
-      yaml \
     ;
     # endregion
 EOF

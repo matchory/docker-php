@@ -2,9 +2,8 @@
 ARG PHP_VERSION="8.4"
 FROM php:${PHP_VERSION}-cli-alpine AS upstream
 FROM upstream AS base
-ARG APCU_VERSION="5.1.27"
-ARG REDIS_VERSION="6.3.0"
-ARG OPENSWOOLE_VERSION="25.2.0"
+ARG PIE_VERSION="1.3.0-rc.2"
+ARG UV_VERSION="0.3.0"
 ARG user="php"
 ARG uid="5000"
 
@@ -12,6 +11,7 @@ ARG uid="5000"
 # see https://github.com/docker-library/php/issues/240#issuecomment-763112749
 ENV LD_PRELOAD="/usr/lib/preloadable_libiconv.so"
 
+COPY --link --from=ghcr.io/php/pie:bin /pie /usr/bin/pie
 RUN <<EOF
     set -eux
 
@@ -26,6 +26,7 @@ RUN <<EOF
       yaml-dev \
       zlib-dev \
       gettext \
+      unzip \
       fcgi \
       file \
       acl \
@@ -37,58 +38,94 @@ RUN <<EOF
       postgresql-dev \
       oniguruma-dev \
       linux-headers \
+      liburing-dev \
       openssl-dev \
+      sqlite-dev \
       c-ares-dev \
       pcre2-dev \
+      libuv-dev \
       pcre-dev \
       curl-dev \
       icu-dev \
+      git \
     ;
     # endregion
 
-    # region Install redis extension
-    curl \
+    docker-php-source extract
+
+    # region Install PIE extensions
+    pie install -j$(nproc) phpredis/phpredis \
+      --enable-redis \
+    ;
+    pie install -j$(nproc) apcu/apcu \
+      --enable-apcu \
+    ;
+    pie install -j$(nproc) pecl/yaml
+    pie install -j$(nproc) php-memcached/php-memcached \
+      --enable-memcached-session \
+      --enable-memcached-json \
+    ;
+    #pie install -j$(nproc) csvtoolkit/fastcsv \
+    #  --enable-fastcsv \
+    #;
+    # endregion
+
+    # region Install uv extension
+        curl \
         --fail \
         --silent \
         --location \
-        --output /tmp/redis.tar.gz \
-      "https://github.com/phpredis/phpredis/archive/${REDIS_VERSION}.tar.gz"
-    tar xfz /tmp/redis.tar.gz
-    rm -rf /tmp/redis.tar.gz
+        --output /tmp/uv.tar.gz \
+      "https://github.com/amphp/ext-uv/archive/v${UV_VERSION}.tar.gz"
+    tar xfz /tmp/uv.tar.gz
+    rm -r /tmp/uv.tar.gz
     mkdir -p /usr/src/php/ext
-    mv phpredis-* /usr/src/php/ext/redis
+    ls -alh ext-uv-${UV_VERSION}
+    mv ext-uv-${UV_VERSION} /usr/src/php/ext/uv
     # endregion
 
-    # region Install Extensions
-    docker-php-source extract
+    # region Install built-in extensions
     docker-php-ext-configure zip
     docker-php-ext-install -j$(nproc) \
+      pdo_sqlite \
       pdo_pgsql \
       sockets \
-      opcache \
       bcmath \
       pcntl \
-      redis \
       intl \
       zip \
+      uv \
+    ;
+
+    # If we're running on PHP 8.4, install the opcache extension (it's bundled in later versions)
+    if php --version | grep -q "PHP 8\.4"; then
+      docker-php-ext-install -j$(nproc) opcache
+    fi
+    # endregion
+
+    # region Install PECL extensions
+    pecl install excimer
+    pecl clear-cache || true
+    docker-php-ext-enable \
+      excimer \
     ;
     # endregion
 
-    # region Install PECL Extensions
-    pecl install memcached
-    pecl install excimer
-    pecl install "apcu-${APCU_VERSION}"
-    pecl install yaml
-    pecl install "openswoole-${OPENSWOOLE_VERSION}"
-    pecl clear-cache || true
-    docker-php-ext-enable \
-      openswoole \
-      memcached \
-      opcache \
-      excimer \
-      apcu \
-      yaml \
-    ;
+    # region Install Swoole with extra features
+    # TODO: Remove this condition when Swoole supports PHP 8.5+
+    if php --version | grep -q "PHP 8\.4"; then
+        pie install -j$(nproc) swoole/swoole \
+          --enable-swoole-sqlite \
+          --enable-swoole-pgsql \
+          --enable-swoole-curl \
+          --enable-sockets \
+          --enable-openssl \
+          --enable-iouring \
+          --enable-brotli \
+        ;
+    fi
+    # endregion
+
     docker-php-source delete
     # endregion
 
@@ -112,18 +149,20 @@ RUN <<EOF
     rm -rf \
       /usr/local/lib/php/test \
       /usr/local/bin/phpdbg \
-      /usr/local/bin/docker-php-ext-* \
-      /usr/local/bin/docker-php-source \
       /usr/local/bin/install-php-extensions \
+      /usr/local/bin/docker-php-source \
+      /usr/local/bin/docker-php-ext-* \
+      /usr/local/bin/phpize \
       /usr/local/bin/pear* \
       /usr/local/bin/pecl \
       /usr/local/bin/phpize \
       /var/cache/* \
       /usr/src/* \
-      /tmp/*
+      /tmp/* \
+    ;
     # endregion
 
-    # Add a non-root user to run the application
+    # region Add a non-root user to run the application
     addgroup \
         -g "${uid}" \
         -S \
@@ -134,15 +173,17 @@ RUN <<EOF
         -G ${user} \
         -DS \
       "${user}"
+    # endregion
 EOF
 
 # Copy custom PHP settings
-COPY --link php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
+COPY --link ./php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
 
 ENTRYPOINT ["docker-php-entrypoint"]
+
 VOLUME /var/run/php
 VOLUME /app
-EXPOSE 9000
+EXPOSE 9000/tcp
 
 FROM base AS dev
 ARG user="php"
@@ -172,12 +213,14 @@ RUN --mount=type=bind,from=upstream,source=/usr/local/bin,target=/usr/local/bin 
       /tmp/*
     # endregion
 
+    # region Configure XDebug
     # See https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host
     # See https://github.com/docker/for-linux/issues/264
     # The `client_host` below may optionally be replaced with `discover_client_host=yes`
     # Add `start_with_request=yes` to start debug session on each request
-    echo "xdebug.client_host = host.docker.internal" >> "${PHP_INI_DIR}/conf.d/xdebug.ini";
-    echo "xdebug.mode = off" >> "${PHP_INI_DIR}/conf.d/xdebug.ini";
+    echo "xdebug.client_host = host.docker.internal" >> "${PHP_INI_DIR}/conf.d/docker-php-ext-xdebug.ini";
+    echo "xdebug.mode = off" >> "${PHP_INI_DIR}/conf.d/docker-php-ext-xdebug.ini";
+    # endregion
 EOF
 
 COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
