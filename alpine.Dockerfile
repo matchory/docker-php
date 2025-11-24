@@ -81,7 +81,6 @@ RUN <<EOF
     tar xfz /tmp/uv.tar.gz
     rm -r /tmp/uv.tar.gz
     mkdir -p /usr/src/php/ext
-    ls -alh ext-uv-${UV_VERSION}
     mv ext-uv-${UV_VERSION} /usr/src/php/ext/uv
     # endregion
 
