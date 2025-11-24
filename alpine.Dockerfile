@@ -6,7 +6,7 @@ FROM php:${PHP_VERSION}-cli-alpine AS upstream
 FROM upstream AS base
 ARG UV_VERSION="0.3.0"
 ARG user="php"
-ARG uid="5000"
+ARG uid="900"
 
 # Install gnu-libiconv and set LD_PRELOAD env to make iconv work fully on Alpine image.
 # see https://github.com/docker-library/php/issues/240#issuecomment-763112749
@@ -38,43 +38,40 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
         --virtual .build-deps \
       ${PHPIZE_DEPS} \
       postgresql-dev \
-      oniguruma-dev \
       linux-headers \
       liburing-dev \
-      openssl-dev \
       sqlite-dev \
-      c-ares-dev \
       pcre2-dev \
       libuv-dev \
       pcre-dev \
-      curl-dev \
       icu-dev \
       git \
     ;
     # endregion
 
     docker-php-source extract
+    export num_cpu=$(nproc)
 
     # region Install PIE extensions
-    pie install -j$(nproc) phpredis/phpredis \
+    pie install -j${num_cpu} phpredis/phpredis \
       --enable-redis \
     ;
-    pie install -j$(nproc) apcu/apcu \
+    pie install -j${num_cpu} apcu/apcu \
       --enable-apcu \
     ;
-    pie install -j$(nproc) pecl/yaml
-    pie install -j$(nproc) php-memcached/php-memcached \
+    pie install -j${num_cpu} pecl/yaml
+    pie install -j${num_cpu} php-memcached/php-memcached \
       --enable-memcached-session \
       --enable-memcached-json \
     ;
-    #pie install -j$(nproc) csvtoolkit/fastcsv \
+    #pie install -j${num_cpu} csvtoolkit/fastcsv \
     #  --enable-fastcsv \
     #;
     # endregion
 
     # region Install built-in extensions
     docker-php-ext-configure zip
-    docker-php-ext-install -j$(nproc) \
+    docker-php-ext-install -j${num_cpu} \
       pdo_sqlite \
       pdo_pgsql \
       sockets \
@@ -86,7 +83,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
 
     # If we're running on PHP 8.4, install the opcache extension (it's bundled in later versions)
     if php --version | grep -q "PHP 8\.4"; then
-      docker-php-ext-install -j$(nproc) opcache
+      docker-php-ext-install -j${num_cpu} opcache
     fi
     # endregion
 
@@ -108,7 +105,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     # region Install Swoole with extra features
     # TODO: Remove this condition when Swoole supports PHP 8.5+
     if php --version | grep -q "PHP 8\.4"; then
-        pie install -j$(nproc) swoole/swoole \
+        pie install -j${num_cpu} swoole/swoole \
           --enable-swoole-sqlite \
           --enable-swoole-pgsql \
           --enable-swoole-curl \
@@ -181,7 +178,7 @@ EXPOSE 9000/tcp
 
 FROM base AS dev
 ARG user="php"
-ARG uid="5000"
+ARG uid="900"
 ENV COMPOSER_ALLOW_SUPERUSER="1"
 ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="1"
 
@@ -229,12 +226,12 @@ COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR "/app"
 
 ONBUILD ARG user="php"
-ONBUILD ARG uid="5000"
+ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
 FROM base AS prod
 ARG user="php"
-ARG uid="5000"
+ARG uid="900"
 ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="0"
 ENV PHP_OPCACHE_MAX_ACCELERATED_FILES="10000"
 ENV PHP_OPCACHE_MEMORY_CONSUMPTION="192"
@@ -245,5 +242,5 @@ RUN ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
 WORKDIR "/app"
 
 ONBUILD ARG user="php"
-ONBUILD ARG uid="5000"
+ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
