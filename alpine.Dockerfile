@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
-FROM php:8.4-cli-alpine AS upstream
+ARG PHP_VERSION="8.4"
+FROM php:${PHP_VERSION}-cli-alpine AS upstream
 FROM upstream AS base
 ARG APCU_VERSION="5.1.27"
-ARG REDIS_VERSION="6.2.0"
+ARG REDIS_VERSION="6.3.0"
 ARG OPENSWOOLE_VERSION="25.2.0"
 ARG user="php"
 ARG uid="5000"

@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM php:8.4-cli AS upstream
+ARG PHP_VERSION="8.4"
+FROM php:${PHP_VERSION}-cli AS upstream
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
     set -eux
@@ -23,7 +24,7 @@ EOF
 
 FROM upstream AS builder
 ARG APCU_VERSION="5.1.27"
-ARG REDIS_VERSION="6.2.0"
+ARG REDIS_VERSION="6.3.0"
 ARG OPENSWOOLE_VERSION="25.2.0"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \

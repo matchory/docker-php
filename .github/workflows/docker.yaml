@@ -12,7 +12,7 @@ on:
     - cron: '0 3 * * 1'
 
 env:
-  REGISTRY: ghcr.io
+  LATEST_VERSION: ${{ vars.LATEST_PHP_VERSION || '8.4' }}
 
 permissions:
   contents: read
@@ -27,7 +27,7 @@ jobs:
       changed: ${{ steps.check.outputs.changed }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Cache digests
         id: cache-digests
@@ -158,11 +158,13 @@ jobs:
           - Dockerfile
           - alpine.Dockerfile
           - frankenphp.Dockerfile
-          - frankenphp-alpine.Dockerfile
+        php-version:
+          - '8.4'
+          - '8.5'
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set up QEMU (for ARM builds)
         uses: docker/setup-qemu-action@v3
@@ -173,38 +175,41 @@ jobs:
       - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine Image Name
-        id: image_name
+        id: config
 
         # language=bash
         run: |
-          echo "IMAGE_NAME=${{ github.repository_owner }}/${{ vars.IMAGE_NAME || 'php' }}" >> $GITHUB_ENV
-          base_version=$( \
+          flavor=$( \
             echo "${{ matrix.dockerfile }}" | \
             sed -E 's/.?Dockerfile//' | \
             tr '/' '-' \
           )
-          suffix="${{ matrix.stage == 'dev' && 'dev' || '' }}"
-          echo "VERSION=${base_version:-latest}${suffix:+-}${suffix}" >> $GITHUB_ENV
+          latest=${{ (matrix.stage == 'prod' && matrix.php-version == env.LATEST_VERSION) && 'true' || 'false' }}
+          suffix="${{ matrix.stage == 'dev' && '-dev' || '' }}"
+          echo "latest=${latest}" >> $GITHUB_OUTPUT
+          echo "version=${{matrix.php-version}}${flavor:+-${flavor}}${suffix}" >> $GITHUB_OUTPUT
+          echo "image-name=${{ github.repository_owner }}/${{ vars.image-name || 'php' }}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ghcr.io/${{ steps.config.outputs.image-name }}
           labels: |
-            org.opencontainers.image.title=${{ env.IMAGE_NAME }}
-            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.title=${{ steps.config.outputs.image-name }}
+            org.opencontainers.image.version=${{ steps.config.outputs.version }}
             org.opencontainers.vendor="Matchory GmbH"
+          flavor: |
+            latest=${{ steps.config.outputs.latest }}
           tags: |
-            type=sha
-            type=sha,prefix=${{ env.VERSION }}-
-            type=raw,value=${{ env.VERSION }}
+            type=sha,prefix=${{ steps.config.outputs.version }}-
+            type=raw,value=${{ steps.config.outputs.version }}
 
       - name: Build and Push
         id: build
@@ -226,6 +231,6 @@ jobs:
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v3
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-name: ghcr.io/${{ steps.config.outputs.image-name }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
