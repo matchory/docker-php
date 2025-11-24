@@ -177,7 +177,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
 
       - name: Determine Image Name
         id: config
@@ -189,7 +189,7 @@ jobs:
             sed -E 's/.?Dockerfile//' | \
             tr '/' '-' \
           )
-          latest=${{ (matrix.stage == 'prod' && matrix.php-version == env.LATEST_VERSION) && 'true' || 'false' }}
+          latest=${{ (matrix.stage == 'prod' && matrix.php-version == env.LATEST_VERSION && matrix.dockerfile == 'Dockerfile' ) && 'true' || 'false' }}
           suffix="${{ matrix.stage == 'dev' && '-dev' || '' }}"
           echo "latest=${latest}" >> $GITHUB_OUTPUT
           echo "version=${{matrix.php-version}}${flavor:+-${flavor}}${suffix}" >> $GITHUB_OUTPUT
