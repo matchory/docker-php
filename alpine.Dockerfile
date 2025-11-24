@@ -202,13 +202,23 @@ RUN --mount=type=bind,from=ghcr.io/php/pie:bin,source=/pie,target=/usr/bin/pie \
     ln -sf "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
 
     # region Install XDebug
+    apk add \
+        --no-cache \
+        --virtual .build-deps \
+      ${PHPIZE_DEPS} \
+      linux-headers \
+    ;
+
     # TODO: Switch to stable when available
     if php --version | grep -q "PHP 8\.5"; then
       pie install xdebug/xdebug:^3@alpha
     else
       pie install xdebug/xdebug
     fi
-    rm -rf /tmp/*
+    apk del .build-deps
+    rm -rf \
+      /var/cache/* \
+      /tmp/*
     # endregion
 
     # region Configure XDebug
