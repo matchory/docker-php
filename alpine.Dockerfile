@@ -16,6 +16,10 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     <<EOF
     set -eux
 
+    if php --version | grep -q "PHP 8\.4"; then
+      php_8_4=true
+    fi
+
     # region Install Dependencies
     apk add \
         --no-cache \
@@ -37,6 +41,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
         --no-cache \
         --virtual .build-deps \
       ${PHPIZE_DEPS} \
+      ${php_8_4:+curl-dev} \
       postgresql-dev \
       linux-headers \
       liburing-dev \
@@ -82,7 +87,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     ;
 
     # If we're running on PHP 8.4, install the opcache extension (it's bundled in later versions)
-    if php --version | grep -q "PHP 8\.4"; then
+    if [ "${php_8_4:-}" = "true" ]; then
       docker-php-ext-install -j${num_cpu} opcache
     fi
     # endregion

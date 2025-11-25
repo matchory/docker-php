@@ -35,6 +35,10 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
     set -eux
 
+    if php --version | grep -q "PHP 8\.4"; then
+      php_8_4=true
+    fi
+
     # region Install Dependencies
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
@@ -42,6 +46,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
         --yes \
         --no-install-recommends \
       ${PHPIZE_DEPS} \
+      ${php_8_4:+libcurl4-openssl-dev} \
       libmemcached-dev \
       libsqlite3-dev \
       liburing-dev \
@@ -88,7 +93,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     ;
 
     # If we're running on PHP 8.4, install the opcache extension (it's bundled in later versions)
-    if php --version | grep -q "PHP 8\.4"; then
+    if [ "${php_8_4:-}" = "true" ]; then
       docker-php-ext-install -j${num_cpu} opcache
     fi
     # endregion
@@ -110,7 +115,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
 
     # region Install Swoole with extra features
     # TODO: Remove this condition when Swoole supports PHP 8.5+
-    if php --version | grep -q "PHP 8\.4"; then
+    if [ "${php_8_4:-}" = "true" ]; then
         pie install -j${num_cpu} swoole/swoole \
           --enable-swoole-sqlite \
           --enable-swoole-pgsql \
