@@ -234,7 +234,35 @@ ONBUILD ARG user="php"
 ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
-FROM base AS prod
+FROM base AS prod-pre
+RUN <<EOF
+    # region Remove Build Dependencies
+    set -eux
+    apk del ${PHPIZE_DEPS} *-dev
+    rm -rf \
+      /usr/local/bin/phpdbg \
+      /usr/local/bin/php-cgi \
+      /usr/local/bin/php-config \
+      /usr/local/bin/install-php-extensions \
+      /usr/local/bin/docker-php-source \
+      /usr/local/bin/docker-php-ext-* \
+      /usr/local/bin/phpize \
+      /usr/local/bin/pear* \
+      /usr/local/bin/phar* \
+      /usr/local/bin/pecl \
+      /usr/local/php/man \
+      /usr/local/etc/pear.conf \
+      /usr/local/lib/php/PEAR \
+	  /usr/local/lib/php/.registry \
+      /usr/src/* \
+      /var/cache/* \
+      /var/log/* \
+      /tmp/* \
+    ;
+    # endregion
+EOF
+
+FROM scratch AS prod
 ARG user="php"
 ARG uid="900"
 ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="0"
@@ -242,6 +270,7 @@ ENV PHP_OPCACHE_MAX_ACCELERATED_FILES="10000"
 ENV PHP_OPCACHE_MEMORY_CONSUMPTION="192"
 ENV PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 
+COPY --link --from=prod-pre / /
 RUN ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
 
 WORKDIR "/app"
