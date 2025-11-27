@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.4"
-ARG PIE_VERSION="1.3.0-rc.3"
+ARG PIE_VERSION="1.3.0"
 FROM ghcr.io/php/pie:${PIE_VERSION} AS pie
 FROM php:${PHP_VERSION}-cli AS upstream
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
