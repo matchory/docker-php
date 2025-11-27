@@ -155,12 +155,6 @@ COPY --link --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 # Copy custom PHP settings
 COPY --link ./php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
 
-ENTRYPOINT ["docker-php-entrypoint"]
-
-VOLUME /var/run/php
-VOLUME /app
-EXPOSE 9000/tcp
-
 FROM base AS dev
 ARG user="php"
 ARG uid="900"
@@ -205,6 +199,12 @@ WORKDIR "/app"
 ONBUILD ARG user="php"
 ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
+
+ENTRYPOINT ["docker-php-entrypoint"]
+
+VOLUME /var/run/php
+VOLUME /app
+EXPOSE 9000/tcp
 
 FROM base AS prod-pre
 RUN <<EOF
@@ -261,3 +261,9 @@ WORKDIR "/app"
 ONBUILD ARG user="php"
 ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
+
+ENTRYPOINT ["docker-php-entrypoint"]
+
+VOLUME /var/run/php
+VOLUME /app
+EXPOSE 9000/tcp

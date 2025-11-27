@@ -25,6 +25,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       unzip \
       file \
     ;
+    rm -rf /var/lib/apt/lists/*
 EOF
 
 FROM upstream AS builder
@@ -53,6 +54,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       libpq-dev \
       git \
     ;
+    rm -rf /var/lib/apt/lists/*
     # endregion
 
     docker-php-source extract
@@ -148,22 +150,14 @@ COPY --link --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 COPY --link ./php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
 COPY --link ./Caddyfile /etc/caddy/Caddyfile
 
-CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD [ "curl", "-ISsfo", "/dev/null", "http://localhost:2019/metrics" ]
-
-VOLUME /app
-EXPOSE 80/tcp
-EXPOSE 443/tcp
-EXPOSE 443/udp
-EXPOSE 2019/tcp
-EXPOSE 2019/udp
-
 FROM base AS dev
 ARG user="php"
 ARG uid="900"
 ENV COMPOSER_ALLOW_SUPERUSER="1"
 ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="1"
+ENV XDG_DATA_HOME="/data"
+ENV XDG_CONFIG_HOME="/config"
+ENV GODEBUG="cgocheck=0"
 
 # Enables PHPStorm to apply the correct path mapping on Xdebug breakpoints
 ENV PHP_IDE_CONFIG="serverName=Docker"
@@ -203,6 +197,14 @@ WORKDIR "/app"
 ONBUILD ARG user="php"
 ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
+
+ENTRYPOINT ["docker-php-entrypoint"]
+CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+HEALTHCHECK NONE
+
+VOLUME /app
+EXPOSE 80/tcp
+EXPOSE 2019/tcp
 
 FROM base AS prod-pre
 RUN <<EOF
@@ -250,6 +252,9 @@ ENV PHP_OPCACHE_VALIDATE_TIMESTAMPS="0"
 ENV PHP_OPCACHE_MAX_ACCELERATED_FILES="10000"
 ENV PHP_OPCACHE_MEMORY_CONSUMPTION="192"
 ENV PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
+ENV XDG_DATA_HOME="/data"
+ENV XDG_CONFIG_HOME="/config"
+ENV GODEBUG="cgocheck=0"
 
 COPY --link --from=prod-pre / /
 RUN ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
@@ -259,3 +264,14 @@ WORKDIR "/app"
 ONBUILD ARG user="php"
 ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
+
+ENTRYPOINT ["docker-php-entrypoint"]
+CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD [ "curl", "-ISsfo", "/dev/null", "http://localhost:2019/metrics" ]
+
+VOLUME /app
+EXPOSE 80/tcp
+EXPOSE 443/tcp
+EXPOSE 443/udp
+EXPOSE 2019/tcp
