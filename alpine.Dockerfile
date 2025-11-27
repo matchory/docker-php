@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.4"
 ARG PIE_VERSION="1.3.0"
-FROM ghcr.io/php/pie:${PIE_VERSION} AS pie
+FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
 FROM php:${PHP_VERSION}-cli-alpine AS upstream
 FROM upstream AS base
 ARG UV_VERSION="0.3.0"
