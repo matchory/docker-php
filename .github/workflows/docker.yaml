@@ -13,6 +13,10 @@ on:
 
 env:
   LATEST_VERSION: ${{ vars.LATEST_PHP_VERSION || '8.4' }}
+  # PHP versions to build - keep in sync with build matrix
+  PHP_VERSIONS: '8.4 8.5'
+  # PIE version used in Dockerfiles - keep in sync with ARG PIE_VERSION
+  PIE_VERSION: '1.3.1'
 
 permissions:
   contents: read
@@ -31,7 +35,7 @@ jobs:
 
       - name: Cache digests
         id: cache-digests
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: latest-digests.txt
           key: digest-cache-${{ runner.os }}-${{ hashFiles('*Dockerfile') }}
@@ -50,7 +54,20 @@ jobs:
             while IFS= read -r image; do
               # only include real image names, ignoring internal stages
               if [[ "${image}" == *"/"* || "${image}" == *":"* ]]; then
-                base_images+=("${image}")
+                # Expand PIE_VERSION variable (constant across all Dockerfiles)
+                image="${image//\$\{PIE_VERSION\}/${PIE_VERSION}}"
+                image="${image//\$PIE_VERSION/${PIE_VERSION}}"
+
+                # Expand PHP_VERSION variable for each version in the matrix
+                if [[ "${image}" == *'${PHP_VERSION}'* || "${image}" == *'$PHP_VERSION'* ]]; then
+                  for php_version in ${PHP_VERSIONS}; do
+                    expanded="${image//\$\{PHP_VERSION\}/${php_version}}"
+                    expanded="${expanded//\$PHP_VERSION/${php_version}}"
+                    base_images+=("${expanded}")
+                  done
+                else
+                  base_images+=("${image}")
+                fi
               fi
             done < <( \
               grep -e '^FROM ' "${file}" | \
@@ -135,7 +152,7 @@ jobs:
 
       - name: Save digests cache
         if: ${{ fromJSON(steps.check.outputs.changed) }}
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: latest-digests.txt
           key: digest-cache-${{ runner.os }}-${{ hashFiles('*Dockerfile') }}
