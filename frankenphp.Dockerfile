@@ -202,7 +202,6 @@ ENTRYPOINT ["docker-php-entrypoint"]
 CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
 HEALTHCHECK NONE
 
-VOLUME /app
 EXPOSE 80/tcp
 EXPOSE 2019/tcp
 
@@ -270,7 +269,6 @@ CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD [ "curl", "-ISsfo", "/dev/null", "http://localhost:2019/metrics" ]
 
-VOLUME /app
 EXPOSE 80/tcp
 EXPOSE 443/tcp
 EXPOSE 443/udp

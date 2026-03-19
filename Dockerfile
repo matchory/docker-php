@@ -202,8 +202,6 @@ USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
 
-VOLUME /var/run/php
-VOLUME /app
 EXPOSE 9000/tcp
 
 FROM base AS prod-pre
@@ -264,6 +262,4 @@ USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
 
-VOLUME /var/run/php
-VOLUME /app
 EXPOSE 9000/tcp
