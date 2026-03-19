@@ -214,14 +214,16 @@ jobs:
 
       - name: Set up Docker Metadata
         id: meta
-        uses: docker/metadata-action@v5
         uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: manifest,index
         with:
           images: |
             ghcr.io/${{ steps.config.outputs.image-name }}
           labels: |
             org.opencontainers.image.title=${{ steps.config.outputs.image-name }}
             org.opencontainers.image.version=${{ steps.config.outputs.version }}
+            org.opencontainers.image.description="The Docker base image for Matchory applications running on the PHP runtime."
             org.opencontainers.vendor="Matchory GmbH"
           flavor: |
             latest=${{ steps.config.outputs.latest }}
