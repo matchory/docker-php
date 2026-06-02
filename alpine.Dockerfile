@@ -186,6 +186,13 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     set -eux
     ln -sf "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
 
+    # git is required by Composer to install dependencies from VCS sources.
+    # It must not be part of .build-deps, which is removed after the build.
+    apk add \
+        --no-cache \
+      git \
+    ;
+
     # region Install XDebug
     apk add \
         --no-cache \

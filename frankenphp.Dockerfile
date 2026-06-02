@@ -187,12 +187,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
     # region Install XDebug
     # libtool is required by PIE to build extensions
+    # git is required by Composer to install dependencies from VCS sources
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
     apt-get install \
         --yes \
         --no-install-recommends \
       libtool \
+      git \
     ;
 
     # TODO: Switch to stable when available
