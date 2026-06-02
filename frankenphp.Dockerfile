@@ -242,6 +242,12 @@ RUN <<EOF
       /tmp/* \
     ;
     # endregion
+
+    # Activate the production PHP configuration. This must happen in this
+    # stage rather than in the scratch stage below: scratch stages do not
+    # inherit environment variables, so PHP_INI_DIR would expand to an empty
+    # string there, leaving a broken symlink at / and no loaded php.ini.
+    ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
 EOF
 
 FROM scratch AS prod
@@ -256,7 +262,6 @@ ENV XDG_CONFIG_HOME="/config"
 ENV GODEBUG="cgocheck=0"
 
 COPY --link --from=prod-pre / /
-RUN ln -sf "${PHP_INI_DIR}/php.ini-production" "${PHP_INI_DIR}/php.ini"
 
 WORKDIR "/app"
 
