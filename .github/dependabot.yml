@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    cooldown: 3
+    labels:
+      - "dependencies"
+      - "github-actions"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+    groups:
+      actions:
+        patterns:
+          - "*"
