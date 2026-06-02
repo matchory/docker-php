@@ -59,6 +59,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
       zlib1g-dev \
       libuv1-dev \
       libpq-dev \
+      libtool \
       git \
     ;
     # endregion
@@ -175,6 +176,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     ln -sf "${PHP_INI_DIR}/php.ini-development" "${PHP_INI_DIR}/php.ini"
 
     # region Install XDebug
+    # libtool is required by PIE to build extensions
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install \
+        --yes \
+        --no-install-recommends \
+      libtool \
+    ;
+
     # TODO: Switch to stable when available
     if php --version | grep -q "PHP 8\.5"; then
       pie install xdebug/xdebug:@alpha

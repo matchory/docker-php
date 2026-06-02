@@ -48,6 +48,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
       libuv-dev \
       curl-dev \
       pcre-dev \
+      libtool \
       icu-dev \
       git \
     ;
@@ -191,6 +192,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
         --virtual .build-deps \
       ${PHPIZE_DEPS} \
       linux-headers \
+      libtool \
     ;
 
     # TODO: Switch to stable when available
