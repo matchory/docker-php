@@ -2,7 +2,8 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
-    cooldown: 3
+    cooldown:
+      default-days: 3
     labels:
       - "dependencies"
       - "github-actions"

@@ -39,7 +39,7 @@ docker build --build-arg PHP_VERSION=8.4 --target dev -t php:8.4-dev .
 **Via PIE/PECL:**
 redis, apcu, yaml, memcached (with session and JSON support), excimer, uv
 
-**Swoole**: Compiled with curl, pgsql, sqlite, sockets, openssl, iouring, and brotli support.
+**Swoole** (CLI variants only): Compiled with curl, pgsql, sqlite, sockets, openssl, iouring, and brotli support. Not included in the FrankenPHP variant, which uses FrankenPHP as its application server.
 
 **Built-in PHP extensions:**
 pdo_sqlite, pdo_pgsql, sockets, bcmath, pcntl, intl, zip, opcache
@@ -58,6 +58,7 @@ Xdebug, Composer
 | `PHP_UPLOAD_MAX_FILESIZE` | `128M`         | Max upload file size         |
 | `PHP_POST_MAX_SIZE`       | Same as upload | Max POST body size           |
 | `PHP_ERROR_REPORTING`     | `E_ALL`        | Error reporting level        |
+| `PHP_DISPLAY_ERRORS`      | `Off`          | Display errors in output     |
 
 ### OPcache
 
@@ -95,7 +96,10 @@ The FrankenPHP variant uses a Caddyfile with Mercure and Vulcain enabled. Config
 
 ## Non-root User
 
-All images create and run as user `php` (UID 900) by default. Override with the `user` and `uid` build args.
+All images create and run as user `php` (UID 900) by default. The `user` and `uid` build args apply when
+building these base images themselves — the `USER` instruction is baked at that point, so passing
+`--build-arg uid=...` to a *downstream* image build does not change the user it runs as. Downstream images
+that need a different UID must create it and add their own `USER` instruction.
 
 ## Multi-stage Build Architecture
 

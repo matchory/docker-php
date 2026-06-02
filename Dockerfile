@@ -2,6 +2,7 @@
 ARG PHP_VERSION="8.5"
 ARG PIE_VERSION="1.4.5"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
+FROM composer:2 AS composer-bin
 FROM php:${PHP_VERSION}-cli AS upstream
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
@@ -9,6 +10,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
+    # NOTE: soname-versioned packages (libmemcached11t64, libicu76, libzip5,
+    # liburing2) are tied to the Debian release of the upstream PHP image and
+    # must be bumped when it rebases onto a new Debian version.
     apt-get install \
         --yes \
         --no-install-recommends \
@@ -16,6 +20,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       libmemcached11t64 \
       ca-certificates \
       libyaml-0-2 \
+      liburing2 \
       libicu76 \
       libzip5 \
       gettext \
@@ -29,6 +34,7 @@ EOF
 
 FROM upstream AS builder
 ARG UV_VERSION="0.3.0"
+ARG EXCIMER_VERSION="1.2.6"
 
 RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -101,7 +107,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     # endregion
 
     # region Install PECL extensions
-    pecl install excimer
+    pecl install "excimer-${EXCIMER_VERSION}"
     pecl clear-cache || true
     docker-php-ext-enable \
       excimer \
@@ -127,6 +133,8 @@ ARG user="php"
 ARG uid="900"
 
 RUN <<EOF
+    set -eux
+
     # region Add a non-root user to run the application
     addgroup \
         --gid "${uid}" \
@@ -185,7 +193,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     # endregion
 EOF
 
-COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --link --from=composer-bin /usr/bin/composer /usr/bin/composer
 
 WORKDIR "/app"
 
@@ -195,10 +203,10 @@ USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
 
-EXPOSE 9000/tcp
-
 FROM base AS prod-pre
 RUN <<EOF
+    set -eux
+
     # region Remove Build Dependencies
     export DEBIAN_FRONTEND=noninteractive
     apt-get remove \
@@ -259,5 +267,3 @@ ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
-
-EXPOSE 9000/tcp

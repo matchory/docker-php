@@ -2,6 +2,7 @@
 ARG PHP_VERSION="8.5"
 ARG PIE_VERSION="1.4.5"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
+FROM composer:2 AS composer-bin
 FROM dunglas/frankenphp:1.12-php${PHP_VERSION} AS upstream
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
@@ -9,6 +10,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
+    # NOTE: soname-versioned packages (libmemcached11t64, libicu76, libzip5)
+    # are tied to the Debian release of the upstream image and must be bumped
+    # when it rebases onto a new Debian version.
     apt-get install \
         --yes \
         --no-install-recommends \
@@ -23,13 +27,14 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       libuv1 \
       zlib1g \
       unzip \
+      curl \
       file \
     ;
-    rm -rf /var/lib/apt/lists/*
 EOF
 
 FROM upstream AS builder
 ARG UV_VERSION="0.3.0"
+ARG EXCIMER_VERSION="1.2.6"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
@@ -54,7 +59,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       libpq-dev \
       git \
     ;
-    rm -rf /var/lib/apt/lists/*
     # endregion
 
     docker-php-source extract
@@ -103,13 +107,17 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     # endregion
 
     # region Install PECL extensions
-    pecl install excimer
+    pecl install "excimer-${EXCIMER_VERSION}"
     pecl clear-cache || true
     docker-php-ext-enable \
       excimer \
       uv \
     ;
     # endregion
+
+    # NOTE: Swoole is intentionally not built for this variant: FrankenPHP is
+    # the application server here, so the CLI variants are the ones that ship
+    # Swoole.
 EOF
 
 FROM upstream AS base
@@ -117,6 +125,8 @@ ARG user="php"
 ARG uid="900"
 
 RUN <<EOF
+    set -eux
+
     # region Add a non-root user to run the application
     addgroup \
         --gid "${uid}" \
@@ -134,13 +144,14 @@ RUN <<EOF
     # Add additional capability to bind to port 80 and 443
     setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/frankenphp
 
-    # Give write access to /data/caddy and /config/caddy
-    chown -R "${uid}:${uid}" \
-        /config/caddy \
-        /data/caddy
-
     # Create the application folder
     mkdir -p /app
+
+    # Give write access to /data/caddy, /config/caddy, and /app
+    chown -R "${uid}:${uid}" \
+        /config/caddy \
+        /data/caddy \
+        /app
 EOF
 
 COPY --link --from=builder /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
@@ -190,7 +201,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     # endregion
 EOF
 
-COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --link --from=composer-bin /usr/bin/composer /usr/bin/composer
 
 WORKDIR "/app"
 
@@ -203,10 +214,11 @@ CMD ["--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]
 HEALTHCHECK NONE
 
 EXPOSE 80/tcp
-EXPOSE 2019/tcp
 
 FROM base AS prod-pre
 RUN <<EOF
+    set -eux
+
     # region Remove Build Dependencies
     export DEBIAN_FRONTEND=noninteractive
     apt-get remove \
@@ -277,4 +289,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 EXPOSE 80/tcp
 EXPOSE 443/tcp
 EXPOSE 443/udp
-EXPOSE 2019/tcp

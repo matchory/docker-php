@@ -2,9 +2,11 @@
 ARG PHP_VERSION="8.5"
 ARG PIE_VERSION="1.4.5"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
+FROM composer:2 AS composer-bin
 FROM php:${PHP_VERSION}-cli-alpine AS upstream
 FROM upstream AS base
 ARG UV_VERSION="0.3.0"
+ARG EXCIMER_VERSION="1.2.6"
 ARG user="php"
 ARG uid="900"
 
@@ -95,7 +97,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     # endregion
 
     # region Install PECL extensions
-    pecl install excimer
+    pecl install "excimer-${EXCIMER_VERSION}"
     pecl clear-cache || true
     docker-php-ext-enable \
       excimer \
@@ -144,7 +146,6 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
       /usr/local/bin/phpize \
       /usr/local/bin/pear* \
       /usr/local/bin/pecl \
-      /usr/local/bin/phpize \
       /var/cache/* \
       /usr/src/* \
       /tmp/* \
@@ -213,7 +214,7 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     # endregion
 EOF
 
-COPY --link --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --link --from=composer-bin /usr/bin/composer /usr/bin/composer
 
 WORKDIR "/app"
 
@@ -222,8 +223,6 @@ ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
-
-EXPOSE 9000/tcp
 
 FROM base AS prod-pre
 RUN <<EOF
@@ -267,6 +266,10 @@ ENV PHP_OPCACHE_MAX_ACCELERATED_FILES="10000"
 ENV PHP_OPCACHE_MEMORY_CONSUMPTION="192"
 ENV PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 
+# Scratch stages do not inherit environment variables, so the gnu-libiconv
+# preload from the base stage must be re-declared here (see base stage).
+ENV LD_PRELOAD="/usr/lib/preloadable_libiconv.so"
+
 COPY --link --from=prod-pre / /
 
 WORKDIR "/app"
@@ -276,5 +279,3 @@ ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
-
-EXPOSE 9000/tcp

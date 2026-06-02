@@ -51,7 +51,7 @@ All Dockerfiles follow a consistent multi-stage pattern:
 
 Extensions installed via PIE and PECL:
 - redis, apcu, yaml, memcached, excimer, uv
-- swoole (with curl/pgsql/sqlite/iouring support)
+- swoole (CLI variants only, with curl/pgsql/sqlite/iouring support)
 - Built-in: pdo_sqlite, pdo_pgsql, sockets, bcmath, pcntl, intl, zip, opcache
 
 ### Configuration
