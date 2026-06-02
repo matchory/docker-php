@@ -15,8 +15,6 @@ env:
   LATEST_VERSION: ${{ vars.LATEST_PHP_VERSION || '8.5' }}
   # PHP versions to build - keep in sync with build matrix
   PHP_VERSIONS: '8.4 8.5'
-  # PIE version used in Dockerfiles - keep in sync with ARG PIE_VERSION
-  PIE_VERSION: '1.4.5'
 
 permissions:
   contents: read
@@ -51,12 +49,25 @@ jobs:
           base_images=()
 
           for file in ./*Dockerfile; do
+            # Resolve FROM-line placeholders from the ARG defaults declared in
+            # the same Dockerfile (PIE_VERSION, COMPOSER_VERSION, ...), keeping
+            # the Dockerfiles the single source of truth for those versions.
+            # PHP_VERSION is expanded separately below, since multiple PHP
+            # versions are built from the same Dockerfile.
+            declare -A arg_defaults=()
+            while IFS='=' read -r arg_name arg_value; do
+              arg_defaults["${arg_name}"]="${arg_value}"
+            done < <(sed -nE 's/^ARG ([A-Za-z_][A-Za-z0-9_]*)="([^"]*)".*$/\1=\2/p' "${file}")
+
             while IFS= read -r image; do
               # only include real image names, ignoring internal stages
               if [[ "${image}" == *"/"* || "${image}" == *":"* ]]; then
-                # Expand PIE_VERSION variable (constant across all Dockerfiles)
-                image="${image//\$\{PIE_VERSION\}/${PIE_VERSION}}"
-                image="${image//\$PIE_VERSION/${PIE_VERSION}}"
+                for arg_name in "${!arg_defaults[@]}"; do
+                  if [[ "${arg_name}" != "PHP_VERSION" ]]; then
+                    image="${image//\$\{${arg_name}\}/${arg_defaults[${arg_name}]}}"
+                    image="${image//\$${arg_name}/${arg_defaults[${arg_name}]}}"
+                  fi
+                done
 
                 # Expand PHP_VERSION variable for each version in the matrix
                 if [[ "${image}" == *'${PHP_VERSION}'* || "${image}" == *'$PHP_VERSION'* ]]; then
@@ -175,6 +186,7 @@ jobs:
           - Dockerfile
           - alpine.Dockerfile
           - frankenphp.Dockerfile
+        # Keep in sync with the PHP_VERSIONS env variable at the top
         php-version:
           - '8.4'
           - '8.5'

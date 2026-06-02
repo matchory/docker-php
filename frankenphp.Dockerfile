@@ -1,9 +1,11 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.5"
 ARG PIE_VERSION="1.4.5"
+ARG FRANKENPHP_VERSION="1.12"
+ARG COMPOSER_VERSION="2"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
-FROM composer:2 AS composer-bin
-FROM dunglas/frankenphp:1.12-php${PHP_VERSION} AS upstream
+FROM composer:${COMPOSER_VERSION} AS composer-bin
+FROM dunglas/frankenphp:${FRANKENPHP_VERSION}-php${PHP_VERSION} AS upstream
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
     set -eux

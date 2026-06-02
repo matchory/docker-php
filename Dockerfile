@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.5"
 ARG PIE_VERSION="1.4.5"
+ARG COMPOSER_VERSION="2"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
-FROM composer:2 AS composer-bin
+FROM composer:${COMPOSER_VERSION} AS composer-bin
 FROM php:${PHP_VERSION}-cli AS upstream
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked <<EOF
