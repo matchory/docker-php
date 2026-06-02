@@ -30,8 +30,8 @@ docker build --target dev -f alpine.Dockerfile -t php:alpine-dev .
 # FrankenPHP variant
 docker build --target dev -f frankenphp.Dockerfile -t php:frankenphp-dev .
 
-# Specify PHP version (default: 8.4)
-docker build --build-arg PHP_VERSION=8.5 --target dev -t php:8.5-dev .
+# Specify PHP version (default: 8.5)
+docker build --build-arg PHP_VERSION=8.4 --target dev -t php:8.4-dev .
 ```
 
 ## Pre-installed Extensions
@@ -39,7 +39,7 @@ docker build --build-arg PHP_VERSION=8.5 --target dev -t php:8.5-dev .
 **Via PIE/PECL:**
 redis, apcu, yaml, memcached (with session and JSON support), excimer, uv
 
-**Swoole** (PHP 8.4 only): Compiled with curl, pgsql, sqlite, sockets, openssl, iouring, and brotli support.
+**Swoole**: Compiled with curl, pgsql, sqlite, sockets, openssl, iouring, and brotli support.
 
 **Built-in PHP extensions:**
 pdo_sqlite, pdo_pgsql, sockets, bcmath, pcntl, intl, zip, opcache
@@ -89,7 +89,7 @@ The FrankenPHP variant uses a Caddyfile with Mercure and Vulcain enabled. Config
 
 | Arg           | Default | Description                   |
 |---------------|---------|-------------------------------|
-| `PHP_VERSION` | `8.4`   | PHP version (`8.4`, `8.5`)    |
+| `PHP_VERSION` | `8.5`   | PHP version (`8.4`, `8.5`)    |
 | `user`        | `php`   | Non-root username             |
 | `uid`         | `900`   | UID/GID for the non-root user |
 
