@@ -57,7 +57,7 @@ Extensions installed via PIE and PECL:
 ### Configuration
 
 - **php.ini**: Custom PHP settings with environment variable support for opcache, memory limits, etc.
-- **Caddyfile**: FrankenPHP configuration with Mercure/Vulcain enabled (frankenphp variant only)
+- **Caddyfile**: FrankenPHP configuration with opt-in Mercure/Vulcain support via `CADDY_SERVER_IMPORTS=mercure` (frankenphp variant only)
 
 ### Environment Variables
 

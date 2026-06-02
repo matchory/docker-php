@@ -147,10 +147,11 @@ RUN <<EOF
     # Create the application folder
     mkdir -p /app
 
-    # Give write access to /data/caddy, /config/caddy, and /app
+    # Give write access to /data (Caddy state, Mercure Bolt DB), /config,
+    # and /app
     chown -R "${uid}:${uid}" \
-        /config/caddy \
-        /data/caddy \
+        /config \
+        /data \
         /app
 EOF
 

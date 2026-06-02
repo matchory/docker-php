@@ -73,18 +73,31 @@ Xdebug, Composer
 
 ### FrankenPHP-specific
 
-The FrankenPHP variant uses a Caddyfile with Mercure and Vulcain enabled. Configure via:
+The FrankenPHP variant uses a Caddyfile with optional Mercure and Vulcain support. Configure via:
 
-| Variable                        | Default                   | Description                              |
-|---------------------------------|---------------------------|------------------------------------------|
-| `SERVER_NAME`                   | `localhost`               | Server hostname                          |
-| `MERCURE_TRANSPORT_URL`         | `bolt:///data/mercure.db` | Mercure transport backend                |
-| `MERCURE_PUBLISHER_JWT_KEY`     | —                         | JWT key for publishers                   |
-| `MERCURE_SUBSCRIBER_JWT_KEY`    | —                         | JWT key for subscribers                  |
-| `CADDY_GLOBAL_OPTIONS`          | —                         | Additional Caddy global config           |
-| `CADDY_EXTRA_CONFIG`            | —                         | Additional Caddy site blocks             |
-| `CADDY_SERVER_EXTRA_DIRECTIVES` | —                         | Extra directives inside the server block |
-| `FRANKENPHP_CONFIG`             | —                         | Extra FrankenPHP directives              |
+| Variable                        | Default     | Description                                        |
+|---------------------------------|-------------|----------------------------------------------------|
+| `SERVER_NAME`                   | `localhost` | Server hostname                                    |
+| `CADDY_SERVER_IMPORTS`          | —           | Caddyfile snippets to import (e.g. `mercure`)      |
+| `CADDY_GLOBAL_OPTIONS`          | —           | Additional Caddy global config                     |
+| `CADDY_EXTRA_CONFIG`            | —           | Additional Caddy site blocks or snippets           |
+| `CADDY_SERVER_EXTRA_DIRECTIVES` | —           | Extra directives inside the server block           |
+| `FRANKENPHP_CONFIG`             | —           | Extra FrankenPHP directives                        |
+
+#### Mercure (opt-in)
+
+The Mercure hub (with Vulcain support) is disabled by default. Enable it by setting
+`CADDY_SERVER_IMPORTS=mercure` — the JWT keys are then **required**, or Caddy will
+refuse to start:
+
+| Variable                     | Default            | Description                                |
+|------------------------------|--------------------|--------------------------------------------|
+| `MERCURE_PUBLISHER_JWT_KEY`  | —                  | JWT key for publishers (required)          |
+| `MERCURE_SUBSCRIBER_JWT_KEY` | —                  | JWT key for subscribers (required)         |
+| `MERCURE_PUBLISHER_JWT_ALG`  | `HS256`            | JWT algorithm for publishers               |
+| `MERCURE_SUBSCRIBER_JWT_ALG` | `HS256`            | JWT algorithm for subscribers              |
+| `MERCURE_TRANSPORT_PATH`     | `/data/mercure.db` | Path to the Bolt transport database        |
+| `MERCURE_EXTRA_DIRECTIVES`   | —                  | Extra directives for the Mercure hub block |
 
 ## Build Args
 

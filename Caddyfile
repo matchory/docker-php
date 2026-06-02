@@ -6,16 +6,15 @@
 	}
 }
 
-{$CADDY_EXTRA_CONFIG}
-
-{$SERVER_NAME:localhost} {
-	root * public/
-	encode zstd br gzip
-
-	# Enable Mercure and Vulcain modules
+# The Mercure hub (and Vulcain support) is opt-in: set CADDY_SERVER_IMPORTS=mercure
+# to enable it. Doing so requires MERCURE_PUBLISHER_JWT_KEY and
+# MERCURE_SUBSCRIBER_JWT_KEY to be set, or the server will refuse to start.
+(mercure) {
 	mercure {
-		# Transport to use (default to Bolt)
-		transport_url {$MERCURE_TRANSPORT_URL:bolt:///data/mercure.db}
+		# Transport to use (defaults to Bolt)
+		transport bolt {
+			path {$MERCURE_TRANSPORT_PATH:/data/mercure.db}
+		}
 
 		# Publisher JWT key
 		publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} {env.MERCURE_PUBLISHER_JWT_ALG}
@@ -27,6 +26,21 @@
 		{$MERCURE_EXTRA_DIRECTIVES}
 	}
 	vulcain
+}
+
+# Imported when CADDY_SERVER_IMPORTS is unset
+(none) {
+}
+
+{$CADDY_EXTRA_CONFIG}
+
+{$SERVER_NAME:localhost} {
+	root * public/
+	encode zstd br gzip
+
+	# Optional features (e.g. the Mercure hub): set CADDY_SERVER_IMPORTS to the
+	# name of a snippet defined above (or in CADDY_EXTRA_CONFIG) to enable it.
+	import {$CADDY_SERVER_IMPORTS:none}
 
 	{$CADDY_SERVER_EXTRA_DIRECTIVES}
 
