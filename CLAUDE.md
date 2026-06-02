@@ -29,9 +29,9 @@ docker build --target dev -f alpine.Dockerfile -t php:alpine-dev .
 docker build --target dev -f frankenphp.Dockerfile -t php:frankenphp-dev .
 ```
 
-Specify PHP version (defaults to 8.4):
+Specify PHP version (defaults to 8.5):
 ```bash
-docker build --build-arg PHP_VERSION=8.5 --target dev -t php:8.5-dev .
+docker build --build-arg PHP_VERSION=8.4 --target dev -t php:8.4-dev .
 ```
 
 ## Architecture
@@ -51,7 +51,7 @@ All Dockerfiles follow a consistent multi-stage pattern:
 
 Extensions installed via PIE and PECL:
 - redis, apcu, yaml, memcached, excimer, uv
-- swoole (PHP 8.4 only, with curl/pgsql/sqlite/iouring support)
+- swoole (with curl/pgsql/sqlite/iouring support)
 - Built-in: pdo_sqlite, pdo_pgsql, sockets, bcmath, pcntl, intl, zip, opcache
 
 ### Configuration
