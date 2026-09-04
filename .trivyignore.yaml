@@ -1,0 +1,18 @@
+# Accepted exceptions for the image scan in .github/workflows/docker.yaml.
+#
+# Everything here must have an expiry. When it lapses the build fails again and
+# someone re-reads the entry, which is the point: an exception nobody revisits
+# is just a disabled check.
+
+vulnerabilities:
+  # Both live in the upstream dunglas/frankenphp binary's vendored Go modules.
+  # There is no fixed FrankenPHP release as of 2026-09-04 (1.12.7 is the newest
+  # 1.12.x and still ships them), so nothing in this repository can clear them.
+  # Revisit when FrankenPHP publishes a build on golang.org/x/crypto >= 0.55.0.
+  - id: CVE-2026-56854
+    expired_at: 2026-12-03
+    statement: golang.org/x/crypto in upstream dunglas/frankenphp; no fixed release available.
+
+  - id: GHSA-r277-6w6q-xmqw
+    expired_at: 2026-12-03
+    statement: github.com/getkin/kin-openapi in upstream dunglas/frankenphp; no fixed release available.
