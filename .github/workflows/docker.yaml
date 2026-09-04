@@ -262,6 +262,41 @@ jobs:
           provenance: mode=max
           sbom: true
 
+      # Scans the image we just pushed, by digest. `ignore-unfixed` is deliberate:
+      # base images always carry a tail of CVEs with no fix available, and failing
+      # on those produces a red build nobody can act on. Accepted exceptions live in
+      # .trivyignore.yaml and every one of them expires.
+      - name: Scan image for critical vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ steps.config.outputs.image-name }}@${{ steps.build.outputs.digest }}
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          trivyignores: .trivyignore.yaml
+          exit-code: '1'
+          format: table
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ github.token }}
+
+      # Reported, never blocking: HIGH findings in a base image are a backlog to
+      # work down, not a reason to stop shipping.
+      - name: Report high-severity findings
+        if: always()
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ steps.config.outputs.image-name }}@${{ steps.build.outputs.digest }}
+          scanners: vuln
+          severity: HIGH
+          ignore-unfixed: true
+          trivyignores: .trivyignore.yaml
+          exit-code: '0'
+          format: table
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ github.token }}
+
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
