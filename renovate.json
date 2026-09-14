@@ -1,0 +1,58 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "timezone": "Etc/UTC",
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "labels": [
+    "dependencies"
+  ],
+  "minimumReleaseAge": "3 days",
+  "dockerfile": {
+    "description": "Superseded by the customManager below: this manager cannot rewrite FROM lines whose tag only partially comes from an ARG (ghcr.io/php/pie:${PIE_VERSION}-bin), and emits updates whose replaceString is absent from the file",
+    "enabled": false
+  },
+  "customDatasources": {
+    "pecl": {
+      "defaultRegistryUrlTemplate": "https://pecl.php.net/rest/r/{{packageName}}/latest.txt",
+      "format": "plain"
+    }
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Version pins declared as ARG defaults in the Dockerfiles",
+      "managerFilePatterns": [
+        "/(^|/)[\\w.-]*Dockerfile$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+) versioning=(?<versioning>\\S+)\\s*\\nARG \\w+=\"(?<currentValue>[^\"]+)\""
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Group all GitHub Actions bumps into a single PR",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "actions",
+      "addLabels": [
+        "github-actions"
+      ]
+    },
+    {
+      "description": "PIE publishes its binary image as <version>-bin",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "ghcr.io/php/pie"
+      ],
+      "extractVersion": "^(?<version>.+)-bin$"
+    }
+  ]
+}

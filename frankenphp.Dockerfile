@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.5"
+# renovate: datasource=docker depName=ghcr.io/php/pie versioning=semver
 ARG PIE_VERSION="1.4.5"
+# renovate: datasource=docker depName=dunglas/frankenphp versioning=docker
 ARG FRANKENPHP_VERSION="1.12"
+# renovate: datasource=docker depName=composer versioning=docker
 ARG COMPOSER_VERSION="2"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
 FROM composer:${COMPOSER_VERSION} AS composer-bin
@@ -35,7 +38,9 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 EOF
 
 FROM upstream AS builder
+# renovate: datasource=custom.pecl depName=uv versioning=semver
 ARG UV_VERSION="0.3.0"
+# renovate: datasource=custom.pecl depName=excimer versioning=semver
 ARG EXCIMER_VERSION="1.2.6"
 
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
