@@ -26,31 +26,35 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     # region Install Dependencies
     apk add \
         --no-cache \
+      libmemcached-libs \
       postgresql-client \
-      libmemcached-dev \
       ca-certificates \
       gnu-libiconv \
-      libzip-dev \
-      yaml-dev \
-      zlib-dev \
       gettext \
+      libzip \
       libuv \
       unzip \
       fcgi \
       file \
+      yaml \
+      zlib \
       acl \
     ;
     apk add \
         --no-cache \
         --virtual .build-deps \
       ${PHPIZE_DEPS} \
+      libmemcached-dev \
       postgresql-dev \
       linux-headers \
       liburing-dev \
       sqlite-dev \
       pcre2-dev \
       libuv-dev \
+      libzip-dev \
       curl-dev \
+      yaml-dev \
+      zlib-dev \
       pcre-dev \
       libtool \
       icu-dev \
@@ -124,7 +128,6 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     # endregion
 
     docker-php-source delete
-    # endregion
 
     # region Remove Build Dependencies
     runDeps="$( \
@@ -232,8 +235,6 @@ COPY --link --from=composer-bin /usr/bin/composer /usr/bin/composer
 
 WORKDIR "/app"
 
-ONBUILD ARG user="php"
-ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
@@ -241,8 +242,11 @@ ENTRYPOINT ["docker-php-entrypoint"]
 FROM base AS prod-pre
 RUN <<EOF
     # region Remove Build Dependencies
+    # Build tooling and headers are already gone: the base stage removes them
+    # with the .build-deps virtual package. Deleting ${PHPIZE_DEPS} here would
+    # only uninstall `file`, which the base stage installs as a runtime
+    # dependency.
     set -eux
-    apk del ${PHPIZE_DEPS} *-dev
     rm -rf \
       /usr/local/bin/phpdbg \
       /usr/local/bin/php-cgi \
@@ -257,7 +261,7 @@ RUN <<EOF
       /usr/local/php/man \
       /usr/local/etc/pear.conf \
       /usr/local/lib/php/PEAR \
-	  /usr/local/lib/php/.registry \
+      /usr/local/lib/php/.registry \
       /usr/src/* \
       /var/cache/* \
       /var/log/* \
@@ -284,12 +288,15 @@ ENV PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 # preload from the base stage must be re-declared here (see base stage).
 ENV LD_PRELOAD="/usr/lib/preloadable_libiconv.so"
 
+# Scratch stages do not inherit environment variables. PHP itself does not need
+# PHP_INI_DIR at runtime (the path is compiled into the binary), but images
+# built FROM this one reference it, so it has to be restored here.
+ENV PHP_INI_DIR="/usr/local/etc/php"
+
 COPY --link --from=prod-pre / /
 
 WORKDIR "/app"
 
-ONBUILD ARG user="php"
-ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]

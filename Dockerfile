@@ -214,8 +214,6 @@ COPY --link --from=composer-bin /usr/bin/composer /usr/bin/composer
 
 WORKDIR "/app"
 
-ONBUILD ARG user="php"
-ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
@@ -225,12 +223,11 @@ RUN <<EOF
     set -eux
 
     # region Remove Build Dependencies
+    # Extensions are compiled in the `builder` stage, which this stage does not
+    # descend from, so there is no build tooling here to remove. Purging
+    # ${PHPIZE_DEPS} would only uninstall `file`, which the upstream stage
+    # installs deliberately as a runtime dependency.
     export DEBIAN_FRONTEND=noninteractive
-    apt-get remove \
-        --yes \
-        --purge \
-      ${PHPIZE_DEPS} \
-    ;
     apt-get purge \
         --option APT::AutoRemove::RecommendsImportant=false \
         --auto-remove \
@@ -252,7 +249,7 @@ RUN <<EOF
       /usr/local/php/man \
       /usr/local/etc/pear.conf \
       /usr/local/lib/php/PEAR \
-	  /usr/local/lib/php/.registry \
+      /usr/local/lib/php/.registry \
       /usr/src/* \
       /var/cache/* \
       /var/log/* \
@@ -275,12 +272,15 @@ ENV PHP_OPCACHE_MAX_ACCELERATED_FILES="10000"
 ENV PHP_OPCACHE_MEMORY_CONSUMPTION="192"
 ENV PHP_OPCACHE_MAX_WASTED_PERCENTAGE="10"
 
+# Scratch stages do not inherit environment variables. PHP itself does not need
+# PHP_INI_DIR at runtime (the path is compiled into the binary), but images
+# built FROM this one reference it, so it has to be restored here.
+ENV PHP_INI_DIR="/usr/local/etc/php"
+
 COPY --link --from=prod-pre / /
 
 WORKDIR "/app"
 
-ONBUILD ARG user="php"
-ONBUILD ARG uid="900"
 USER "${uid}:${uid}"
 
 ENTRYPOINT ["docker-php-entrypoint"]
