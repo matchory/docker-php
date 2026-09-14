@@ -1,0 +1,5 @@
+# Only php.ini and the Caddyfile are ever copied into an image, so everything
+# else — .git, .idea, the Dockerfiles, docs — is build-context noise.
+*
+!php.ini
+!Caddyfile
