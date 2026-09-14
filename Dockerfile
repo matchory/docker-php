@@ -13,6 +13,11 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
+    # The upstream PHP image lags the Debian security archive between its own
+    # rebuilds, so apply pending security updates before anything else.
+    # Without this the image ships every CVE fixed since upstream last built,
+    # which is what the Trivy scan in .github/workflows/docker.yaml fails on.
+    apt-get upgrade --yes
     # NOTE: soname-versioned packages (libmemcached11t64, libicu76, libzip5,
     # liburing2) are tied to the Debian release of the upstream PHP image and
     # must be bumped when it rebases onto a new Debian version.
