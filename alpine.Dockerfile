@@ -1,12 +1,16 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.5"
+# renovate: datasource=docker depName=ghcr.io/php/pie versioning=semver
 ARG PIE_VERSION="1.4.5"
+# renovate: datasource=docker depName=composer versioning=docker
 ARG COMPOSER_VERSION="2"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
 FROM composer:${COMPOSER_VERSION} AS composer-bin
 FROM php:${PHP_VERSION}-cli-alpine AS upstream
 FROM upstream AS base
+# renovate: datasource=custom.pecl depName=uv versioning=semver
 ARG UV_VERSION="0.3.0"
+# renovate: datasource=custom.pecl depName=excimer versioning=semver
 ARG EXCIMER_VERSION="1.2.6"
 ARG user="php"
 ARG uid="900"
