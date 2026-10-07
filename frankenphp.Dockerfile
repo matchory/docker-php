@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.5"
 # renovate: datasource=docker depName=ghcr.io/php/pie versioning=semver
-ARG PIE_VERSION="1.4.5"
+ARG PIE_VERSION="1.5.1"
 # renovate: datasource=docker depName=dunglas/frankenphp versioning=docker
 ARG FRANKENPHP_VERSION="1.12"
 # renovate: datasource=docker depName=composer versioning=docker
