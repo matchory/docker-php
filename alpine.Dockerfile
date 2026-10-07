@@ -3,7 +3,7 @@ ARG PHP_VERSION="8.5"
 # renovate: datasource=docker depName=ghcr.io/php/pie versioning=semver
 ARG PIE_VERSION="1.4.5"
 # renovate: datasource=docker depName=composer versioning=docker
-ARG COMPOSER_VERSION="2"
+ARG COMPOSER_VERSION="2.10.3"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
 FROM composer:${COMPOSER_VERSION} AS composer-bin
 FROM php:${PHP_VERSION}-cli-alpine AS upstream
@@ -96,23 +96,27 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     # region Install PIE extensions
     pie install -j${num_cpu} "phpredis/phpredis:${REDIS_VERSION}" \
       --enable-redis \
-    ;
+    || (cat /tmp/pie_make_output_* 2>&1; exit 2)
     pie install -j${num_cpu} "apcu/apcu:${APCU_VERSION}" \
       --enable-apcu \
-    ;
-    pie install -j${num_cpu} "pecl/yaml:${YAML_VERSION}"
+    || (cat /tmp/pie_make_output_* 2>&1; exit 2)
+    pie install -j${num_cpu} "pecl/yaml:${YAML_VERSION}" \
+    || (cat /tmp/pie_make_output_* 2>&1; exit 2)
     pie install -j${num_cpu} "php-memcached/php-memcached:${MEMCACHED_VERSION}" \
       --enable-memcached-session \
       --enable-memcached-json \
-    ;
-    pie install -j${num_cpu} "amphp/uv:${UV_VERSION}"
-    pie install -j${num_cpu} "wikimedia/excimer:${EXCIMER_VERSION}"
+    || (cat /tmp/pie_make_output_* 2>&1; exit 2)
+    pie install -j${num_cpu} "amphp/uv:${UV_VERSION}" \
+    || (cat /tmp/pie_make_output_* 2>&1; exit 2)
+    pie install -j${num_cpu} "wikimedia/excimer:${EXCIMER_VERSION}" \
+    || (cat /tmp/pie_make_output_* 2>&1; exit 2)
     #pie install -j${num_cpu} csvtoolkit/fastcsv \
     #  --enable-fastcsv \
     #;
     # endregion
 
     # region Install Swoole with extra features
+    # Must run after the built-in extensions: --enable-sockets needs the sockets headers
     pie install -j${num_cpu} "swoole/swoole:${SWOOLE_VERSION}" \
       --enable-swoole-sqlite \
       --enable-swoole-pgsql \
@@ -208,7 +212,8 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
       libtool \
     ;
 
-    pie install "xdebug/xdebug:${XDEBUG_VERSION}"
+    pie install -j$(nproc) "xdebug/xdebug:${XDEBUG_VERSION}" \
+    || (cat /tmp/pie_make_output_* 2>&1; exit 2)
     apk del .build-deps
     rm -rf \
       /var/cache/* \
