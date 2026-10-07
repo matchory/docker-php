@@ -41,10 +41,20 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 EOF
 
 FROM upstream AS builder
-# renovate: datasource=custom.pecl depName=uv versioning=semver
-ARG UV_VERSION="0.3.0"
-# renovate: datasource=custom.pecl depName=excimer versioning=semver
-ARG EXCIMER_VERSION="1.2.6"
+# renovate: datasource=packagist depName=phpredis/phpredis versioning=composer
+ARG REDIS_VERSION="6.3.0"
+# renovate: datasource=packagist depName=apcu/apcu versioning=composer
+ARG APCU_VERSION="5.1.28"
+# renovate: datasource=packagist depName=pecl/yaml versioning=composer
+ARG YAML_VERSION="2.3.0"
+# renovate: datasource=packagist depName=php-memcached/php-memcached versioning=composer
+ARG MEMCACHED_VERSION="3.4.0"
+# renovate: datasource=packagist depName=swoole/swoole versioning=composer
+ARG SWOOLE_VERSION="6.2.3"
+# renovate: datasource=packagist depName=amphp/uv versioning=composer
+ARG UV_VERSION="0.3.1"
+# renovate: datasource=packagist depName=wikimedia/excimer versioning=composer
+ARG EXCIMER_VERSION="1.2.7"
 
 RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -76,23 +86,6 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     docker-php-source extract
     export num_cpu=$(nproc)
 
-    # region Install PIE extensions
-    pie install -j${num_cpu} phpredis/phpredis \
-      --enable-redis \
-    ;
-    pie install -j${num_cpu} apcu/apcu \
-      --enable-apcu \
-    ;
-    pie install -j${num_cpu} pecl/yaml
-    pie install -j${num_cpu} php-memcached/php-memcached \
-      --enable-memcached-session \
-      --enable-memcached-json \
-    ;
-    #pie install -j${num_cpu} csvtoolkit/fastcsv \
-    #  --enable-fastcsv \
-    #;
-    # endregion
-
     # region Install built-in extensions
     docker-php-ext-configure zip
     docker-php-ext-install -j${num_cpu} \
@@ -111,23 +104,27 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     fi
     # endregion
 
-    # region Install uv extension
-    pecl config-set preferred_state beta
-    pecl install "uv-${UV_VERSION}"
-    pecl config-set preferred_state stable
-    # endregion
-
-    # region Install PECL extensions
-    pecl install "excimer-${EXCIMER_VERSION}"
-    pecl clear-cache || true
-    docker-php-ext-enable \
-      excimer \
-      uv \
+    # region Install PIE extensions
+    pie install -j${num_cpu} "phpredis/phpredis:${REDIS_VERSION}" \
+      --enable-redis \
     ;
+    pie install -j${num_cpu} "apcu/apcu:${APCU_VERSION}" \
+      --enable-apcu \
+    ;
+    pie install -j${num_cpu} "pecl/yaml:${YAML_VERSION}"
+    pie install -j${num_cpu} "php-memcached/php-memcached:${MEMCACHED_VERSION}" \
+      --enable-memcached-session \
+      --enable-memcached-json \
+    ;
+    pie install -j${num_cpu} "amphp/uv:${UV_VERSION}"
+    pie install -j${num_cpu} "wikimedia/excimer:${EXCIMER_VERSION}"
+    #pie install -j${num_cpu} csvtoolkit/fastcsv \
+    #  --enable-fastcsv \
+    #;
     # endregion
 
     # region Install Swoole with extra features
-    pie install -j${num_cpu} swoole/swoole \
+    pie install -j${num_cpu} "swoole/swoole:${SWOOLE_VERSION}" \
       --enable-swoole-sqlite \
       --enable-swoole-pgsql \
       --enable-uring-socket \
@@ -168,6 +165,8 @@ COPY --link --from=builder /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 COPY --link ./php.ini "${PHP_INI_DIR}/conf.d/99-docker.ini"
 
 FROM base AS dev
+# renovate: datasource=packagist depName=xdebug/xdebug versioning=composer
+ARG XDEBUG_VERSION="3.5.3"
 ARG user="php"
 ARG uid="900"
 ENV COMPOSER_ALLOW_SUPERUSER="1"
@@ -196,12 +195,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       git \
     ;
 
-    # TODO: Switch to stable when available
-    if php --version | grep -q "PHP 8\.5"; then
-      pie install xdebug/xdebug:@alpha
-    else
-      pie install xdebug/xdebug
-    fi
+    pie install "xdebug/xdebug:${XDEBUG_VERSION}"
     rm -rf /tmp/*
     # endregion
 

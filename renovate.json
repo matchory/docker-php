@@ -15,12 +15,6 @@
     "description": "Superseded by the customManager below: this manager cannot rewrite FROM lines whose tag only partially comes from an ARG (ghcr.io/php/pie:${PIE_VERSION}-bin), and emits updates whose replaceString is absent from the file",
     "enabled": false
   },
-  "customDatasources": {
-    "pecl": {
-      "defaultRegistryUrlTemplate": "https://pecl.php.net/rest/r/{{packageName}}/latest.txt",
-      "format": "plain"
-    }
-  },
   "customManagers": [
     {
       "customType": "regex",
