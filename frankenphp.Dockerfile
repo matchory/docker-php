@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 ARG PHP_VERSION="8.5"
-# renovate: datasource=docker depName=ghcr.io/php/pie versioning=semver
+# renovate: datasource=github-releases depName=php/pie versioning=semver
 ARG PIE_VERSION="1.4.5"
-# renovate: datasource=docker depName=dunglas/frankenphp versioning=docker
+# renovate: datasource=github-releases depName=php/frankenphp versioning=docker
 ARG FRANKENPHP_VERSION="1.12"
-# renovate: datasource=docker depName=composer versioning=docker
+# renovate: datasource=github-releases depName=composer/composer versioning=semver
 ARG COMPOSER_VERSION="2.10.3"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
 FROM composer:${COMPOSER_VERSION} AS composer-bin
