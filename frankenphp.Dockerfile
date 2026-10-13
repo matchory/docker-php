@@ -3,7 +3,7 @@ ARG PHP_VERSION="8.5"
 # renovate: datasource=github-releases depName=php/pie versioning=semver
 ARG PIE_VERSION="1.5.2"
 # renovate: datasource=github-releases depName=php/frankenphp versioning=docker
-ARG FRANKENPHP_VERSION="1.12"
+ARG FRANKENPHP_VERSION="1.13"
 # renovate: datasource=github-releases depName=composer/composer versioning=semver
 ARG COMPOSER_VERSION="2.10.3"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
