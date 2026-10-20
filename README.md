@@ -37,7 +37,7 @@ docker build --build-arg PHP_VERSION=8.4 --target dev -t php:8.4-dev .
 ## Pre-installed Extensions
 
 **Via PIE:**
-redis, apcu, yaml, memcached (with session and JSON support), excimer, uv
+redis, apcu, yaml, memcached (with session and JSON support), excimer, uv, grpc ([grpc-php-rs](https://github.com/BSN4/grpc-php-rs), prebuilt binary)
 
 **Swoole** (CLI variants only): Compiled with curl, pgsql, sqlite, sockets, openssl, iouring, and brotli support. Not included in the FrankenPHP variant, which uses FrankenPHP as its application server.
 

@@ -55,6 +55,8 @@ ARG SWOOLE_VERSION="6.2.3"
 ARG UV_VERSION="0.3.1"
 # renovate: datasource=packagist depName=wikimedia/excimer versioning=composer
 ARG EXCIMER_VERSION="1.2.7"
+# renovate: datasource=packagist depName=bsn4/grpc versioning=composer
+ARG GRPC_VERSION="0.4.0"
 
 RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -120,6 +122,8 @@ RUN --mount=type=bind,from=pie,source=/pie,target=/usr/bin/pie \
     pie install -j${num_cpu} "amphp/uv:${UV_VERSION}" \
     || (cat /tmp/pie_make_output_* 2>&1; exit 2)
     pie install -j${num_cpu} "wikimedia/excimer:${EXCIMER_VERSION}" \
+    || (cat /tmp/pie_make_output_* 2>&1; exit 2)
+    pie install -j${num_cpu} "bsn4/grpc:${GRPC_VERSION}" \
     || (cat /tmp/pie_make_output_* 2>&1; exit 2)
     #pie install -j${num_cpu} csvtoolkit/fastcsv \
     #  --enable-fastcsv \

@@ -50,7 +50,7 @@ All Dockerfiles follow a consistent multi-stage pattern:
 ### Pre-installed Extensions
 
 Extensions installed via PIE:
-- redis, apcu, yaml, memcached, excimer, uv
+- redis, apcu, yaml, memcached, excimer, uv, grpc
 - swoole (CLI variants only, with curl/pgsql/sqlite/iouring support)
 - Built-in: pdo_sqlite, pdo_pgsql, sockets, bcmath, pcntl, intl, zip, opcache
 
