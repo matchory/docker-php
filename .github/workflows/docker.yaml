@@ -10,6 +10,8 @@ on:
   schedule:
     # Runs every Monday at 03:00 UTC
     - cron: '0 3 * * 1'
+  # Manual rebuilds, e.g. to pick up upstream security releases immediately
+  workflow_dispatch:
 
 env:
   LATEST_VERSION: ${{ vars.LATEST_PHP_VERSION || '8.5' }}
