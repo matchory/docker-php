@@ -1,26 +1,26 @@
 # Matchory supply chain baseline:
 # https://github.com/matchory/.github/blob/main/supply-chain/STANDARD.md
 #
-# Dependabot covers GitHub Actions and Docker. Every real base image here is
-# ARG-templated (php:${PHP_VERSION}-cli, ghcr.io/php/pie:${PIE_VERSION}-bin),
-# which Dependabot does not interpolate, so the docker entry finds little to
-# update: the ARG pins stay with Renovate (renovate.json).
+# Dependabot covers GitHub Actions. Every base image here is ARG-templated
+# (php:${PHP_VERSION}-cli, ghcr.io/php/pie:${PIE_VERSION}-bin), which
+# Dependabot does not interpolate (dependabot-core#2057), so the ARG pins stay
+# with Renovate (renovate.json).
 version: 2
 
 updates:
   - package-ecosystem: github-actions
     directory: /
-    schedule: &schedule
+    schedule:
       interval: weekly
       day: monday
       time: "05:00"
       timezone: Europe/Berlin
-    cooldown: &cooldown
+    cooldown:
       default-days: 3
       semver-major-days: 3
       semver-minor-days: 3
       semver-patch-days: 3
-    groups: &groups
+    groups:
       minor-and-patch:
         applies-to: version-updates
         update-types: [minor, patch]
@@ -28,10 +28,3 @@ updates:
         applies-to: security-updates
         patterns: ["*"]
     labels: [dependencies, github-actions]
-
-  - package-ecosystem: docker
-    directory: /
-    schedule: *schedule
-    cooldown: *cooldown
-    groups: *groups
-    labels: [dependencies, docker]
