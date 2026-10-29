@@ -33,6 +33,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Check version pins match across Dockerfiles
+
+        # language=bash
+        run: |
+          drift="$( \
+            grep -hoE '^ARG [A-Z_]+_VERSION="[^"]*"' ./*Dockerfile | \
+            sort -u | \
+            sed -E 's/^ARG ([A-Z_]+)=.*/\1/' | \
+            uniq -d \
+          )"
+
+          if [[ -n "${drift}" ]]; then
+            echo "::error::Version pins differ between Dockerfiles: ${drift}"
+            exit 1
+          fi
+
       - name: Cache digests
         id: cache-digests
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
