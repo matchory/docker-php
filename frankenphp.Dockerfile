@@ -5,7 +5,7 @@ ARG PIE_VERSION="1.5.3"
 # renovate: datasource=github-releases depName=php/frankenphp versioning=docker
 ARG FRANKENPHP_VERSION="1.13"
 # renovate: datasource=github-releases depName=composer/composer versioning=semver
-ARG COMPOSER_VERSION="2.10.3"
+ARG COMPOSER_VERSION="2.11.1"
 FROM ghcr.io/php/pie:${PIE_VERSION}-bin AS pie
 FROM composer:${COMPOSER_VERSION} AS composer-bin
 FROM dunglas/frankenphp:${FRANKENPHP_VERSION}-php${PHP_VERSION} AS upstream
