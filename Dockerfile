@@ -50,7 +50,7 @@ ARG YAML_VERSION="2.3.0"
 # renovate: datasource=packagist depName=php-memcached/php-memcached versioning=composer
 ARG MEMCACHED_VERSION="3.4.0"
 # renovate: datasource=packagist depName=swoole/swoole versioning=composer
-ARG SWOOLE_VERSION="6.2.3"
+ARG SWOOLE_VERSION="6.2.4"
 # renovate: datasource=packagist depName=amphp/uv versioning=composer
 ARG UV_VERSION="0.3.1"
 # renovate: datasource=packagist depName=wikimedia/excimer versioning=composer
