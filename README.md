@@ -104,7 +104,7 @@ refuse to start:
 | Arg                  | Default | Description                                |
 |----------------------|---------|--------------------------------------------|
 | `PHP_VERSION`        | `8.5`   | PHP version (`8.4`, `8.5`)                 |
-| `FRANKENPHP_VERSION` | `1.12`  | FrankenPHP version (FrankenPHP variant)    |
+| `FRANKENPHP_VERSION` | `1.14`  | FrankenPHP version (FrankenPHP variant)    |
 | `COMPOSER_VERSION`   | `2`     | Composer version (dev target only)         |
 | `user`               | `php`   | Non-root username                          |
 | `uid`                | `900`   | UID/GID for the non-root user              |
