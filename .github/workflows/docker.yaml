@@ -14,9 +14,9 @@ on:
   workflow_dispatch:
 
 env:
-  LATEST_VERSION: ${{ vars.LATEST_PHP_VERSION || '8.5' }}
+  LATEST_VERSION: ${{ vars.LATEST_PHP_VERSION || '8.6' }}
   # PHP versions to build - keep in sync with build matrix
-  PHP_VERSIONS: '8.4 8.5'
+  PHP_VERSIONS: '8.4 8.5 8.6'
 
 permissions:
   contents: read
@@ -192,6 +192,7 @@ jobs:
         php-version:
           - '8.4'
           - '8.5'
+          - '8.6'
 
     steps:
       - name: Checkout repository
